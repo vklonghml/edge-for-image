@@ -3,6 +3,7 @@
 import (
 	// "bufio"
 	"bytes"
+	"edge-for-image/pkg/payload"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -178,12 +179,12 @@ func checkFacesetExist(config *pkg.Config, aicloud *accessai.Accessai, facesetma
 		}
 	}
 	glog.Infof("faceset map: %#v", facesetmap)
-	
+
 	return db
 }
 
 func NewManager(config *pkg.Config) *Manager {
-	
+
 	// if _, err := db.Exec("create database if not exists aicloud"); err != nil {
 	// 	db.Close()
 	// 	glog.Errorf("create db err: %s", err.Error())
@@ -241,7 +242,7 @@ func (m *Manager) detectFace(imagebase64 string) ([]byte, error) {
 	dfaces := fdata["faces"].([]interface{})
 	if len(dfaces) == 0 {
 		glog.Errorf("dfaces len is 0")
-		return nil, errors.New("dfaces len is 0")	
+		return nil, errors.New("dfaces len is 0")
 	}
 
 	jdface, err := json.Marshal(dfaces[0])
@@ -289,6 +290,7 @@ func (m *Manager) createFacesetIfNotExist(facesetname string) error {
 	// rows, err := db.Query("select * from faceset where facesetname = ?", config.FaceSetName)
 	for key := range m.FaceidMap {
 		if key == facesetname {
+			glog.Infof("faceset %s is already exist!", facesetname)
 			return nil
 		}
 	}
@@ -558,6 +560,46 @@ func (m *Manager) insertIntoFacedb(facesetname, imageaddress, imageurl, name, ag
 	}
 }
 
+// faceset logic
+func (m *Manager) faceset(w http.ResponseWriter, r *http.Request) {
+	glog.Infof("method: %s", r.Method)
+	if r.Method == "POST" {
+		data, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			glog.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(fmt.Sprintf("500 %s", err)))
+			return
+		}
+
+		py := &payload.FacesetRequest{}
+		err = json.Unmarshal(data, &py)
+		if err != nil {
+		    glog.Error(err)
+		    w.WriteHeader(http.StatusBadRequest)
+		    w.Write([]byte(fmt.Sprintf("The input body is not valid format.")))
+		    return
+		}
+
+		err = m.createFacesetIfNotExist(py.Faceset.Name);
+		if  err != nil {
+			glog.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(fmt.Sprintf("create faceset %s error!", py.Faceset.Name)))
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(fmt.Sprintf("creating faceset %s success or already exist.", py.Faceset.Name)))
+		return
+	} else {
+		glog.Infof("the method %s is not implemented yet.", r.Method)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(fmt.Sprintf("the method %s is not implemented yet.", r.Method)))
+		return
+	}
+}
+
 // upload logic
 func (m *Manager) upload(w http.ResponseWriter, r *http.Request) {
 	glog.Infof("method: %s", r.Method)
@@ -645,7 +687,7 @@ func (m *Manager) getAllfaces(facesetname, table string, start, end, numbers int
 	index = 0
 	knowsfaces := make([]FaceInfo, 0)
 	faceinteface := make([]byte, 255)
-	
+
 	for rows.Next() && (numbers == 0 || num < numbers) {
 		// var faceinteface interface{}
 		err := rows.Scan(&knowface.Id, &knowface.FaceSetName, &knowface.FaceID, &faceinteface, &knowface.ImageBase64, &knowface.Name, &knowface.Age, &knowface.Address, &knowface.Imageaddress, &knowface.ImageURL, &knowface.CreateTime, &knowface.SimilaryImageURL, &knowface.Similarity)
@@ -681,7 +723,7 @@ func (m *Manager) getAllfaces(facesetname, table string, start, end, numbers int
 			}
 		}
 		knowsfaces = append(knowsfaces, knowface)
-		num++		
+		num++
 	}
 	return knowsfaces, nil
 }
@@ -747,7 +789,7 @@ func (m *Manager) listfaces(w http.ResponseWriter, r *http.Request) {
 			glog.Error("unkonw search")
 			return
 		}
-		faces, err := m.getAllfaces(facesetname, table, start, end, number, timeby) 
+		faces, err := m.getAllfaces(facesetname, table, start, end, number, timeby)
 		if err != nil {
 			glog.Error(err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -794,7 +836,7 @@ func (m *Manager) deletefaces(facesetname string, blist []interface{}, deleteima
 			isknown = v2["isknown"]
 		}
 		// glog.Infof("%s, %s, %s", id, faceid, imageurl)
-		
+
 		if isknown == "0" {
 			// glog.Infof("in delete knowfaceinfo")
 			_, err := m.Mydb.Exec("delete from knowfaceinfo where id=? and faceid=? and facesetname=?", id, faceid, facesetname)
@@ -958,7 +1000,7 @@ func (m *Manager) faceinforegister(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
-	
+
 	// w.Write([]byte(fmt.Sprintf("500 %s", )))
 }
 
@@ -1099,6 +1141,7 @@ func main() {
 	// 	glog.Infof("r.URL.Path: %s", r.URL.Path[1:])
     //     http.ServeFile(w, r, r.URL.Path[1:])
     // })
+    http.HandleFunc("/api/v1/faceset", m.faceset)
 	http.HandleFunc("/api/v1/faces/upload", m.upload)
 	http.HandleFunc("/api/v1/faces/add", m.addFace)
 	http.HandleFunc("/api/v1/faces", m.listfaces)
