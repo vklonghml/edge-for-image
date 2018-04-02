@@ -1,0 +1,89 @@
+CGO_ENABLED=0 go build -a --installsuffix cgo --ldflags="-s"
+
+
+./edge-for-image --static-dir=/root/go_proj/src/edge-for-image/upload_images --v=2 --alsologtostderr --db-conn-str="root:@tcp(127.0.0.1:3306)/aicloud" --faceset-name=faceset2 --host=0.0.0.0 --public-host=100.114.233.109 --port=9090 --disk-threshod=80
+
+
+
+curl  -X POST http://127.0.0.1:9090/api/v1/faces/upload -d '{"filename":"test-image1","imageBase64":"${IMAGE_BASE}"}'
+
+curl  -X POST -H 'Content-Type:multipart/form-data' -F uploadfile=@1402124a7-1.jpg http://139.159.218.177:9090/api/v1/upload
+
+查询图片
+ curl -v -X GET -H 'Content-Type:application/json' http://162.3.140.21:9090/api/v1/faces -d '{"numbers":"1","isknown":false,"start":"1","end":"1","timeby":false}'
+ curl -v -X GET -H 'Content-Type:application/json' http://162.3.140.21:9090/api/v1/faces -d '{"numbers":"1","isknown":true,"start":"1","end":"1","timeby":false}'
+
+  curl -v -X GET -H 'Content-Type:application/json' http://127.0.0.1:9090/api/v1/faces -d '{"numbers":"1","isknown":false,"start":"1","end":"1","timeby":false}'
+信息录入
+curl -v -X POST -H 'Content-Type:application/json' http://162.3.140.21:9090/api/v1/faces/register -d '{"faceinfo":{"id":"1","faceid":"","name":"liming","age":"13","address":"road1","imageurl":"http://127.0.0.01:9090/1402124a7-1.jpg","isadd":true}}'
+
+curl -v -X POST -H 'Content-Type:application/json' http://127.0.0.1:9090/api/v1/faces/register -d '{"faceinfo":{"id":"11","faceid":"","name":"liming","age":"13","address":"road1","imageurl":"http://100.114.233.109:9090/test-image27","isadd":true,"face":{"confidence":"","bound":{"topleftx":"20","toplefty":"23","width":"56","height":"56"}}}}'
+
+
+批量删除
+curl -v -X POST -H 'Content-Type:application/json' http://162.3.140.21:9090/api/v1/faces/delete -d '{"faces":[{"id":"1","faceid":"1","imageurl":"http://0.0.0.0:9090/1402124a7-1.jpg"},{"id":"1","faceid":"","imageurl":"http://0.0.0.0:9090/1402124a7-1.jpg"},{"id":"2","faceid":"","imageurl":"http://0.0.0.0:9090/636294093670833342473.jpg"}]}'
+curl -v -X POST -H 'Content-Type:application/json' http://162.3.140.21:9090/api/v1/faces/delete -d '{"faces":{"id":"1","faceid":"1","imageurl":"http://0.0.0.0:9090/1402124a7-1.jpg"},{"id":"2","faceid":"","imageurl":"http://0.0.0.0:9090/636294093670833342473.jpg"},{"id":"2","faceid":"","imageurl":"http://127.0.0.1:9090/1402124a7-1.jpg"}}'
+
+curl -v -X POST -H 'Content-Type:application/json' http://139.159.218.177:9090/api/v1/faces/delete -d '{"faces":[{"id":"1","faceid":"1","imageurl":"http://0.0.0.0:9090/1402124a7-1.jpg"},{"id":"2","faceid":"","imageurl":"http://0.0.0.0:9090/636294093670833342473.jpg"}]}'
+
+
+mysql -u root -phuawei -Daicloud < db.sql
+
+create database aicloud;
+CREATE TABLE `faceset` (
+    `id` INT(10) NOT NULL AUTO_INCREMENT,
+    `facesetname` VARCHAR(64) NULL DEFAULT NULL,
+    `facesetid` VARCHAR(64) NULL DEFAULT NULL,
+    `createtime` VARCHAR(64) NULL DEFAULT NULL,
+    PRIMARY KEY (`id`)
+);
+
+CREATE TABLE `facedb` (
+    `id` INT(10) NOT NULL AUTO_INCREMENT,
+    `facesetname` VARCHAR(128) NULL DEFAULT NULL,
+    `faceid` VARCHAR(128) NULL DEFAULT NULL,
+    `face` TEXT NULL,
+    `imagebase64` TEXT NULL,
+    `name` VARCHAR(128) NULL DEFAULT NULL,
+    `age` VARCHAR(128) NULL DEFAULT NULL,
+    `address` VARCHAR(128) NULL DEFAULT NULL,
+    `imageaddress` VARCHAR(255) NULL DEFAULT NULL,
+    `imageurl` VARCHAR(255) NULL DEFAULT NULL,
+    `createtime` BIGINT(64) NOT NULL,
+    PRIMARY KEY (`id`)
+);
+
+CREATE TABLE `knowfaceinfo` (
+    `id` INT(10) NOT NULL AUTO_INCREMENT,
+    `facesetname` VARCHAR(128) NULL DEFAULT NULL,
+    `faceid` VARCHAR(128) NULL DEFAULT NULL,
+    `face` TEXT NULL,
+    `imagebase64` TEXT NULL,
+    `name` VARCHAR(128) NULL DEFAULT NULL,
+    `age` VARCHAR(128) NULL DEFAULT NULL,
+    `address` VARCHAR(128) NULL DEFAULT NULL,
+    `imageaddress` VARCHAR(255) NULL DEFAULT NULL,
+    `imageurl` VARCHAR(255) NULL DEFAULT NULL,
+    `createtime` BIGINT(64) NOT NULL,
+    PRIMARY KEY (`id`)
+);
+
+CREATE TABLE `unknowfaceinfo` (
+    `id` INT(10) NOT NULL AUTO_INCREMENT,
+    `facesetname` VARCHAR(128) NULL DEFAULT NULL,
+    `faceid` VARCHAR(128) NULL DEFAULT NULL,
+    `face` TEXT NULL,
+    `imagebase64` TEXT NULL,
+    `name` VARCHAR(128) NULL DEFAULT NULL,
+    `age` VARCHAR(128) NULL DEFAULT NULL,
+    `address` VARCHAR(128) NULL DEFAULT NULL,
+    `imageaddress` VARCHAR(255) NULL DEFAULT NULL,
+    `imageurl` VARCHAR(255) NULL DEFAULT NULL,
+    `createtime` BIGINT(64) NOT NULL,
+    PRIMARY KEY (`id`)
+);
+
+drop table facedb;
+drop table knowfaceinfo;
+drop table unknowfaceinfo;
+
