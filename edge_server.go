@@ -1,4 +1,4 @@
-	package main
+package main
 
 import (
 	// "bufio"
@@ -15,11 +15,12 @@ import (
 	// "log"
 	"crypto/md5"
 	"database/sql"
+	"html/template"
 	"net/http"
 	"net/url"
 	"os"
 	"strconv"
-	"html/template"
+
 	// "mime/multipart"
 	// "regexp"
 	"strings"
@@ -66,34 +67,32 @@ type BoundingBox struct {
 }
 
 type Face struct {
-	Confidence    string      `json:"confidence"`
-	Bound         BoundingBox `json:"bound"`
+	Confidence string      `json:"confidence"`
+	Bound      BoundingBox `json:"bound"`
 }
 
 type FaceSet struct {
-	FaceSetName  string `json:"facesetname"`
-	FaceSetID    string `json:"facesetid"`
-	CreateTime   string `json:"createtime"`
+	FaceSetName string `json:"facesetname"`
+	FaceSetID   string `json:"facesetid"`
+	CreateTime  string `json:"createtime"`
 }
 
 type FaceInfo struct {
-	Id            string
-	FaceSetName   string  `json:"facesetname"`
-	FaceID      string  `json:"faceid"`
-	Face        Face    `json:"face"`
-	ImageBase64 string  `json:"imagebase64"`
-	Name        string  `json:"name"`
-	Age         string  `json:"age"`
-	Address     string  `json:"address"`
+	Id           string
+	FaceSetName  string `json:"facesetname"`
+	FaceID       string `json:"faceid"`
+	Face         Face   `json:"face"`
+	ImageBase64  string `json:"imagebase64"`
+	Name         string `json:"name"`
+	Age          string `json:"age"`
+	Address      string `json:"address"`
 	Imageaddress string `json:"imageaddress"`
-	ImageURL    string  `json:"imageurl"`
+	ImageURL     string `json:"imageurl"`
 	// alreadyknow bool    `json:"alreadyknow"`
-	CreateTime  int64   `json:"createtime"`
+	CreateTime       int64  `json:"createtime"`
 	SimilaryImageURL string `json:"similaryimageURL"`
-	Similarity  string  `json:"similarity"`
+	Similarity       string `json:"similarity"`
 }
-
-
 
 func checkFacesetExist(config *pkg.Config, aicloud *accessai.Accessai, facesetmap map[string]string) *sql.DB {
 	db, err := sql.Open("mysql", config.DBConnStr)
@@ -170,7 +169,7 @@ func checkFacesetExist(config *pkg.Config, aicloud *accessai.Accessai, facesetma
 		facesetmap[config.FaceSetName] = bdata["faceSetID"].(string)
 	}
 
-	direc := config.StaticDir +"/"+ config.FaceSetName
+	direc := config.StaticDir + "/" + config.FaceSetName
 	if _, err := os.Stat(direc); os.IsNotExist(err) {
 		err = os.Mkdir(direc, 0777)
 		if err != nil {
@@ -193,10 +192,10 @@ func NewManager(config *pkg.Config) *Manager {
 	aicloud := accessai.NewAccessai()
 	facesetmap := make(map[string]string)
 	m := &Manager{
-		CustConfig:    config,
-		AiCloud:       aicloud,
-		Mydb:          checkFacesetExist(config, aicloud, facesetmap),
-		FaceidMap:     facesetmap,
+		CustConfig: config,
+		AiCloud:    aicloud,
+		Mydb:       checkFacesetExist(config, aicloud, facesetmap),
+		FaceidMap:  facesetmap,
 	}
 	glog.Infof("facemap:%#v", m.FaceidMap)
 	return m
@@ -326,7 +325,7 @@ func (m *Manager) createFacesetIfNotExist(facesetname string) error {
 	}
 	m.FaceidMap[facesetname] = bdata["faceSetID"].(string)
 
-	direc := m.CustConfig.StaticDir +"/"+ facesetname
+	direc := m.CustConfig.StaticDir + "/" + facesetname
 	if _, err := os.Stat(direc); os.IsNotExist(err) {
 		err = os.Mkdir(direc, 0777)
 		if err != nil {
@@ -356,7 +355,7 @@ func (m *Manager) searchFace(imageBase64, imagename, facesetname string) error {
 	// imageBase64 := base64.StdEncoding.EncodeToString(buf.Bytes())
 	// imageBase64 = ""
 	// glog.Infof("image base64: %s", imageBase64)
-	
+
 	// defer upFile.Close()
 	uid, err := uuid.NewV4()
 	if err != nil {
@@ -392,7 +391,7 @@ func (m *Manager) searchFace(imageBase64, imagename, facesetname string) error {
 			glog.Errorf("buf copy to file err: %s", err.Error())
 		}
 
-		imageurl := "http://"+m.CustConfig.PublicHost + ":" + m.CustConfig.Port+ "/" + m.CustConfig.FaceSetName+"/"+imagename
+		imageurl := "http://" + m.CustConfig.PublicHost + ":" + m.CustConfig.Port + "/" + m.CustConfig.FaceSetName + "/" + imagename
 
 		urlStr := m.CustConfig.Aiurl + "/v1/faceSet/" + m.FaceidMap[m.CustConfig.FaceSetName] + "/faceSearch?url=" + imageurl
 		// body := []byte(fmt.Sprintf("{\"imageUrl\": \"%s\"}", imageurl))
@@ -421,7 +420,7 @@ func (m *Manager) searchFace(imageBase64, imagename, facesetname string) error {
 		var largesimilar int64
 		if len(faces) > 0 {
 			// found := false
-			for _, v:= range faces {
+			for _, v := range faces {
 				face := v.(map[string]interface{})
 				similar, err := strconv.ParseInt(face["similarity"].(string), 10, 32)
 				if err != nil {
@@ -470,7 +469,7 @@ func (m *Manager) insertIntoKnow(largesimilar, imageaddress, imageurl string, fa
 	faceidToS := face["faceID"].(string)
 	index := 0
 	for k := range faceidToS {
-		if  string(faceidToS[k]) != "0" {
+		if string(faceidToS[k]) != "0" {
 			index = k
 			break
 		}
@@ -575,14 +574,14 @@ func (m *Manager) faceset(w http.ResponseWriter, r *http.Request) {
 		py := &payload.FacesetRequest{}
 		err = json.Unmarshal(data, &py)
 		if err != nil {
-		    glog.Error(err)
-		    w.WriteHeader(http.StatusBadRequest)
-		    w.Write([]byte(fmt.Sprintf("The input body is not valid format.")))
-		    return
+			glog.Error(err)
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(fmt.Sprintf("The input body is not valid format.")))
+			return
 		}
 
 		err = m.createFacesetIfNotExist(py.Faceset.Name);
-		if  err != nil {
+		if err != nil {
 			glog.Error(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(fmt.Sprintf("create faceset %s error!", py.Faceset.Name)))
@@ -737,7 +736,6 @@ func (m *Manager) listfaces(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 		}
 
-
 		glog.Infof("url : %#v", urlpara)
 		// data, err := ioutil.ReadAll(r.Body)
 		// if err != nil {
@@ -757,7 +755,6 @@ func (m *Manager) listfaces(w http.ResponseWriter, r *http.Request) {
 		// facesetname := bdata["facesetname"].(string)
 		// timeby := bdata["timeby"].(bool)
 		// isKnow := bdata["isknown"].(string)
-
 
 		start, err := strconv.ParseInt(urlpara["start"][0], 10, 32)
 		end, err := strconv.ParseInt(urlpara["end"][0], 10, 32)
@@ -1100,7 +1097,7 @@ func (m *Manager) addFace(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			imageurl := "http://"+m.CustConfig.PublicHost + ":" + m.CustConfig.Port+ "/" + bdata["facesetname"].(string)+"/"+ imagename
+			imageurl := "http://" + m.CustConfig.PublicHost + ":" + m.CustConfig.Port + "/" + bdata["facesetname"].(string) + "/" + imagename
 			m.insertIntoFacedb(bdata["facesetname"].(string), imageaddress, imageurl, bdata["name"].(string), bdata["age"].(string), bdata["address"].(string), jdface)
 			// body := []byte(fmt.Sprintf("{\"imageUrl\": \"%s\"}", imageurl))
 			// resp, err := m.AiCloud.FakeFaceSearch(urlStr, http.MethodPost, body)
@@ -1139,9 +1136,9 @@ func main() {
 	// go glog.Error(http.ListenAndServe(":9091", http.FileServer(http.Dir(config.StaticDir))))
 	// http.HandleFunc(config.StaticDir+"/", func(w http.ResponseWriter, r *http.Request) {
 	// 	glog.Infof("r.URL.Path: %s", r.URL.Path[1:])
-    //     http.ServeFile(w, r, r.URL.Path[1:])
-    // })
-    http.HandleFunc("/api/v1/faceset", m.faceset)
+	//     http.ServeFile(w, r, r.URL.Path[1:])
+	// })
+	http.HandleFunc("/api/v1/faceset", m.faceset)
 	http.HandleFunc("/api/v1/faces/upload", m.upload)
 	http.HandleFunc("/api/v1/faces/add", m.addFace)
 	http.HandleFunc("/api/v1/faces", m.listfaces)
