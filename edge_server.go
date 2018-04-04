@@ -11,6 +11,8 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"sync"
+
 	// "path/filepath"
 	// "flag"
 	"fmt"
@@ -34,6 +36,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang/glog"
 	"github.com/satori/go.uuid"
+
+	"github.com/robfig/cron"
 )
 
 // var (
@@ -370,7 +374,7 @@ func (m *Manager) searchFace(imageBase64, imagename, facesetname string) error {
 	picSample := &model.PicSample{
 		Id:          imagename,
 		UploadTime:  time.Now().UnixNano() / 1e6,
-		Similarity:  make(map[string]int64),
+		Similarity:  make(map[string]int32),
 		MostSimilar: "",
 	}
 
@@ -1141,6 +1145,16 @@ func (m *Manager) timeToRemoveImages() {
 func main() {
 	config := pkg.InitConfig()
 	m := NewManager(config)
+
+	//定时调度
+	cron := cron.New()
+	spec := "*/20 * * * * ?"
+	cron.AddFunc(spec, func() {
+		m.cacheScheduler()
+	})
+	cron.Start()
+	//
+
 	fs := http.FileServer(http.Dir(config.StaticDir))
 	http.Handle("/", fs)
 	// go glog.Error(http.ListenAndServe(":9091", http.FileServer(http.Dir(config.StaticDir))))
@@ -1161,6 +1175,7 @@ func main() {
 	glog.Error(http.ListenAndServe(":"+config.Port, nil))
 }
 
+//计算相似度
 func (m *Manager) CaculateSimilarity(picSample *model.PicSample, imageBase64 string, facesetname string) error {
 
 	//base64解码
@@ -1236,7 +1251,7 @@ func (m *Manager) CaculateSimilarity(picSample *model.PicSample, imageBase64 str
 				if err != nil {
 					glog.Errorf("parse error: %s", err.Error())
 				}
-				picSample.Similarity[faceid] = similar
+				picSample.Similarity[faceid] = int32(similar)
 				glog.Infof("face similarity: %s", face["similarity"])
 			}
 		}
@@ -1244,6 +1259,279 @@ func (m *Manager) CaculateSimilarity(picSample *model.PicSample, imageBase64 str
 	return nil
 }
 
+//计算picsample与注册库中最相似的id
 func (m *Manager) CaculateMostSimilarity(sample *model.PicSample) {
+	var curMostSimilarityValue int32 = 0
+	curMostSimilarityKey	:= ""
+	if len(sample.Similarity) > 0{
+		for k,v := range sample.Similarity {
+			if v > curMostSimilarityValue {
+				curMostSimilarityKey = k
+				curMostSimilarityValue = v
+			}
+		}
+		sample.MostSimilar = curMostSimilarityKey
+	}
+}
 
+//计算当前图片与缓存集的相似度，注意该图片也在缓存集中，计算时需要过滤掉自己与自己的相似度
+func (m *Manager) caculateSimilarityWithCache(picSample *model.PicSample, cacheList *list.List, imageBase64 string, facesetName string) model.SRList {
+	m.CaculateSimilarity(picSample, imageBase64, facesetName)
+	result := model.SRList{}
+
+	for k, v := range picSample.Similarity {
+		//如果相似度大于99，认为是缓存中存在该图片，需要过滤处理
+		if v < 99 {
+			to := m.getPicSample(k, cacheList)
+			if to != nil {
+				temp := model.SimilaryRelation{}
+				temp.Similary = v
+				temp.From = picSample
+				temp.To = to
+				result = append(result, temp)
+			}
+		}
+	}
+	return result
+}
+
+//按id从list中找到该对象
+func (m *Manager) getPicSample(id string, list *list.List) *model.PicSample {
+	if list.Len() > 0 {
+		for e:= list.Front(); e!=nil; e=e.Next() {
+			if e.Value.(model.PicSample).Id == id {
+				return e.Value.(*model.PicSample)
+			}
+		}
+	}
+	return nil
+}
+
+//保存到facedb数据库
+func (m *Manager) saveToRegisterDB(picSample *model.PicSample, facesetName string) error {
+	err := pkg.InsertIntoFacedb(m.Mydb, facesetName, picSample.Id, nil, picSample.ImageBase64, "","","","","",time.Now().UnixNano()/1e6, "", "","facedb")
+	if err != nil {
+		glog.Errorf("Prepare INSERT faceinfo err: %s", err.Error())
+	}
+	return err
+}
+
+//保存到已识别的knowfaceinfo数据库
+func (m *Manager) saveToDetectDB(picSample *model.PicSample, facesetName string) error {
+	err := pkg.InsertIntoFacedb(m.Mydb, facesetName, picSample.Id, nil, picSample.ImageBase64, "","","","","",time.Now().UnixNano()/1e6, "","","knowfaceinfo")
+	if err != nil {
+		glog.Errorf("Prepare INSERT faceinfo err: %s", err.Error())
+	}
+	return err
+}
+
+//从相似矩阵获取最相似列表
+func (m *Manager) caculateMostSimilarity(matrix *model.SRMatrix) model.SRList {
+	result := model.SRList{}
+
+	srFromMap := model.SRFromMap{}
+	srToMap := model.SRToMap{}
+	srMap := model.SRMap{}
+
+	for _,srList := range *matrix {
+		for _,sr := range srList {
+			if v, ok := srFromMap[sr.From]; ok {
+				if sr.Similary > v {
+					srFromMap[sr.From] = sr.Similary
+					tempToMap := model.SRToMap{}
+					tempToMap[sr.To] = sr.Similary
+					srMap[sr.From] = tempToMap
+				}
+			} else {
+				srFromMap[sr.From] = sr.Similary
+				tempToMap := model.SRToMap{}
+				tempToMap[sr.To] = sr.Similary
+				srMap[sr.From] = tempToMap
+			}
+
+			if v, ok := srToMap[sr.To]; ok {
+				if sr.Similary > v {
+					srToMap[sr.To] = sr.Similary
+					tempToMap := model.SRToMap{}
+					tempToMap[sr.To] = sr.Similary
+					srMap[sr.From] = tempToMap
+				} else {
+					srToMap[sr.To] = sr.Similary
+					tempToMap := model.SRToMap{}
+					tempToMap[sr.To] = sr.Similary
+					srMap[sr.From] = tempToMap
+				}
+			}
+		}
+	}
+
+	for from, toMap := range srMap {
+		for to, similarity := range toMap {
+			var sr model.SimilaryRelation
+			sr.From = from
+			sr.To = to
+			sr.Similary = similarity
+			result = append(result, sr)
+		}
+	}
+	return result
+}
+
+//将缓存的图片集放到云上
+func (m *Manager) addCacheFaceSet(cacheList *list.List, facesetName string) error {
+	if cacheList.Len() > 0 {
+		for pic := cacheList.Front(); pic != nil;pic = pic.Next() {
+			// first detect image face
+			imagedecode, err := base64.StdEncoding.DecodeString(pic.Value.(model.PicSample).ImageBase64)
+			if err != nil {
+				glog.Error(err)
+				return err
+			}
+			jdface, err := m.detectFace(pic.Value.(model.PicSample).ImageBase64)
+			if err != nil {
+				glog.Error(err)
+				return err
+			}
+			glog.Infof("dface: %#v", jdface)
+
+			// save to file
+			if jdface != nil {
+				imageaddress := m.CustConfig.StaticDir + "/" + facesetName + "/" + pic.Value.(model.PicSample).Id
+				fileToSave, err := os.OpenFile(imageaddress, os.O_WRONLY|os.O_CREATE, 0777)
+				if err != nil {
+					glog.Error(err)
+					return err
+				}
+				defer fileToSave.Close()
+				if _, err := fileToSave.Write(imagedecode); err != nil {
+					glog.Errorf("buf copy to file err: %s", err.Error())
+					return err
+				}
+
+				imageurl := "http://" + m.CustConfig.PublicHost + ":" + m.CustConfig.Port + "/" + facesetName + "/" + pic.Value.(model.PicSample).Id
+				// /v1/faceSet/13345/addFace
+				urlStr := m.CustConfig.Aiurl + "/v1/faceSet/" + m.FaceidMap[facesetName] + "/addFace"
+				body := []byte(fmt.Sprintf("{\"imageUrl\": \"%s\", \"externalImageID\": \"%s\"}", imageurl, m.FaceidMap[facesetName]))
+				// resp, err := m.AiCloud.FakeAddFace(urlStr, http.MethodPost, body)
+				resp, err := m.AiCloud.AddFace(urlStr, http.MethodPut, body)
+				if err != nil {
+					glog.Errorf("search face err: %s", err.Error())
+				}
+				data := resp
+				// glog.Infof("string:%s, resp :%#v", data, data)
+				if len(resp) == 0 {
+					glog.Errorf("add face return 0 length")
+					return err
+				}
+				bdata := make(map[string]interface{})
+				json.Unmarshal(data, &bdata)
+
+
+			} else {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+//从云上删除缓存的图像集
+func (m *Manager) deleteCacheFaceSet(cacheList *list.List, facesetName string) error {
+	if cacheList.Len() > 0 {
+		for pic := cacheList.Front(); pic != nil; pic = pic .Next() {
+			// delete from faceset
+			urlStr := m.CustConfig.Aiurl + "/v1/faceSet/" + m.FaceidMap[facesetName] + "/" + pic.Value.(model.PicSample).Id
+			_, err := m.AiCloud.DeleteFace(urlStr, http.MethodDelete)
+			if err != nil {
+				glog.Error(err)
+				return err
+			}
+
+			//delete from os
+			imageurl := "http://" + m.CustConfig.PublicHost + ":" + m.CustConfig.Port + "/" + facesetName + "/" + pic.Value.(model.PicSample).Id
+			glog.Infof("image location:%s", strings.Split(imageurl, ":"+m.CustConfig.Port)[1])
+			imageaddress := m.CustConfig.StaticDir + strings.Split(imageurl, ":"+m.CustConfig.Port)[1]
+			e := os.Remove(imageaddress)
+			if e != nil {
+				glog.Error("remove err:%s", e)
+			}
+		}
+	}
+	return nil
+}
+
+//缓存调度器
+func (m *Manager) cacheScheduler() {
+	//分两个任务调度
+	var lock sync.RWMutex
+
+	//1.注册缓存
+	lock.Lock()
+	tempRegisterCache := m.UploadPortal.TempRegisterCache
+	tempRegisterCache.PushBack(m.UploadPortal.RegisterCache)
+	m.UploadPortal.RegisterCache.Init()
+	lock.Unlock()
+
+	if tempRegisterCache.Len() > 0 {
+		m.addCacheFaceSet(tempRegisterCache, "cacheFaceset")
+		for {
+			if tempRegisterCache.Len() == 0 {
+				break
+			}
+
+			picSample := tempRegisterCache.Back()
+			similaryRelations := m.caculateSimilarityWithCache(picSample.Value.(*model.PicSample), tempRegisterCache, picSample.Value.(*model.PicSample).ImageBase64,"cacheFaceset")
+
+			for i:= 0; i<len(similaryRelations); i=i+1 {
+				var n *list.Element
+				for e:=tempRegisterCache.Front(); e!= nil; e=n {
+					if e.Value.(model.PicSample).Id == similaryRelations[i].To.Id {
+						n = e.Next()
+						tempRegisterCache.Remove(e)
+					}
+				}
+			}
+			tempRegisterCache.Remove(picSample)
+		}
+		m.deleteCacheFaceSet(tempRegisterCache, "cacheFaceset")
+	}
+
+	//2.识别缓存
+	lock.Lock()
+	tempDetectCache := m.UploadPortal.TempDetectCache
+	tempDetectCache.PushBackList(m.UploadPortal.DetectCache)
+	m.UploadPortal.DetectCache.Init()
+	lock.Unlock()
+
+	if tempDetectCache.Len() > 0 {
+		m.addCacheFaceSet(tempDetectCache, "cacheFaceset")
+
+		srMetrix := model.SRMatrix{}
+		lastSaveMap := make(model.LastSaveMap)
+
+		for e:=tempDetectCache.Front(); e!=nil; e=e.Next() {
+			similaryRelations := m.caculateSimilarityWithCache(e.Value.(*model.PicSample), tempDetectCache, e.Value.(*model.PicSample).ImageBase64, "cacheFaceset")
+			srMetrix = append(srMetrix, similaryRelations)
+		}
+
+		if len(srMetrix) > 0 {
+			mostSimiliarityRelations := m.caculateMostSimilarity(&srMetrix)
+
+			tempDetectCache.Init()
+
+			for i:=0; i< len(mostSimiliarityRelations); i = i+1 {
+				fromPic := mostSimiliarityRelations[i].From
+				toPic := mostSimiliarityRelations[i].To
+
+				if fromPic.UploadTime - lastSaveMap[toPic] > 30*1000 {
+					m.saveToDetectDB(fromPic, m.CustConfig.FaceSetName)
+
+					lastSaveMap[toPic] = fromPic.UploadTime
+				} else {
+					tempDetectCache.PushBack(fromPic)
+				}
+			}
+		}
+		m.deleteCacheFaceSet(tempDetectCache, "cacheFaceset")
+	}
 }

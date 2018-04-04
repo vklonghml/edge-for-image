@@ -5,8 +5,9 @@ import "container/list"
 type PicSample struct {
 	Id          string
 	UploadTime  int64
-	Similarity  map[string]int64
+	Similarity  map[string]int32
 	MostSimilar string
+	ImageBase64 string
 }
 
 type SimilaryRelation struct {
@@ -19,6 +20,18 @@ type SimilaryRelation struct {
 type UploadPortal struct {
 	DetectCache   *list.List
 	RegisterCache *list.List
+	TempRegisterCache	*list.List
+	TempDetectCache		*list.List
 }
 
+type SRList	[]SimilaryRelation
 
+type SRMatrix		[]SRList
+
+type LastSaveMap	map[*PicSample]int64
+
+type SRFromMap 		map[*PicSample]int32
+
+type SRToMap		map[*PicSample]int32
+
+type SRMap 			map[*PicSample]map[*PicSample]int32
