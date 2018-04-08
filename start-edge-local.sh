@@ -1,0 +1,12 @@
+./edge-for-image \
+--static-dir=/opt/edgeServer/images \
+--v=2 \
+--alsologtostderr \
+--db-conn-str="root:@tcp(127.0.0.1:3306)/testaicloud" \
+--faceset-name=huawei-cto \
+--host=192.168.1.52 \
+--public-host=49.4.5.210 \
+--port=9090 \
+--disk-threshod=80 \
+--similarity=92 \
+--aiurl=http://127.0.0.1:8086 >> edge-for-image.log 2>&1 &
