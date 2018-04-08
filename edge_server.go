@@ -3,7 +3,6 @@ package main
 import (
 	// "bufio"
 	"bytes"
-	"container/list"
 	"edge-for-image/pkg/model"
 	"edge-for-image/pkg/payload"
 	"encoding/base64"
@@ -198,12 +197,7 @@ func NewManager(config *pkg.Config) *Manager {
 	// }
 	aicloud := accessai.NewAccessai()
 	facesetmap := make(map[string]string)
-	uploadPortal := &model.UploadPortal{
-		DetectCache:       list.New(),
-		RegisterCache:     list.New(),
-		TempRegisterCache: list.New(),
-		TempDetectCache:   list.New(),
-	}
+	uploadPortal := &model.UploadPortal{}
 	m := &Manager{
 		CustConfig:   config,
 		AiCloud:      aicloud,
@@ -366,6 +360,7 @@ func (m *Manager) searchFace(imageBase64, imagename, facesetname string) error {
 		glog.Errorf("uuid generate error: %s", err.Error())
 	}
 	imagename = fmt.Sprintf("%s", uid) + "-" + imagename
+	glog.Infof("the imagename is %s", imagename)
 	filexist := m.listAlllfiles(m.CustConfig.FaceSetName, imagename)
 	if filexist {
 		glog.Error("file name already exist")
@@ -378,6 +373,7 @@ func (m *Manager) searchFace(imageBase64, imagename, facesetname string) error {
 		UploadTime:  time.Now().UnixNano() / 1e6,
 		Similarity:  make(map[string]int32),
 		MostSimilar: "",
+		ImageBase64: imageBase64,
 	}
 
 	//调用人脸比对API计算相似度
@@ -385,9 +381,9 @@ func (m *Manager) searchFace(imageBase64, imagename, facesetname string) error {
 	m.CaculateMostSimilarity(picSample)
 
 	if len(picSample.Similarity) > 0 {
-		m.UploadPortal.DetectCache.PushBack(picSample)
+		m.UploadPortal.DetectCache = append(m.UploadPortal.DetectCache, *picSample)
 	} else {
-		m.UploadPortal.RegisterCache.PushBack(picSample)
+		m.UploadPortal.RegisterCache = append(m.UploadPortal.RegisterCache, *picSample)
 	}
 
 	/** 之前的方法，先留在这做参考，后面可以删除掉这段代码
@@ -663,13 +659,14 @@ func (m *Manager) upload(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(fmt.Sprintf("500 %s", err)))
 		}
-		facesetname, ok := bdata["facesetname"].(string)
-		if !ok {
-			glog.Error(err)
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(fmt.Sprintf("400 %s", err)))
-		}
+		//facesetname, ok := bdata["facesetname"].(string)
+		//if !ok {
+		//	glog.Error(err)
+		//	w.WriteHeader(http.StatusBadRequest)
+		//	w.Write([]byte(fmt.Sprintf("400 %s", err)))
+		//}
 
+		facesetname := "test_faceset"
 		go m.searchFace(imagebody, filename, facesetname)
 		// if  err != nil {
 		// 	w.WriteHeader(http.StatusInternalServerError)
@@ -1150,7 +1147,7 @@ func main() {
 
 	//定时调度
 	cron := cron.New()
-	spec := "*/20 * * * * ?"
+	spec := "*/10 * * * * ?"
 	cron.AddFunc(spec, func() {
 		m.cacheScheduler()
 	})
@@ -1207,6 +1204,7 @@ func (m *Manager) CaculateSimilarity(picSample *model.PicSample, imageBase64 str
 
 		//这里的sample.Id 就是图片在文件系统中存储的名字，格式为 UUID + 上传的原始图片名.
 		imageaddress := m.CustConfig.StaticDir + "/" + m.CustConfig.FaceSetName + "/" + picSample.Id
+		glog.Infof("the imageaddress is %s", imageaddress)
 		fileToSave, err := os.OpenFile(imageaddress, os.O_WRONLY|os.O_CREATE, 0777)
 		if err != nil {
 			glog.Error(err)
@@ -1219,6 +1217,8 @@ func (m *Manager) CaculateSimilarity(picSample *model.PicSample, imageBase64 str
 
 		//进行1：N的搜索
 		imageurl := "http://" + m.CustConfig.PublicHost + ":" + m.CustConfig.Port + "/" + m.CustConfig.FaceSetName + "/" + picSample.Id
+		picSample.ImageAddress = imageaddress
+		picSample.ImageUrl = imageurl
 		urlStr := m.CustConfig.Aiurl + "/v1/faceSet/" + m.FaceidMap[facesetname] + "/faceSearch?url=" + imageurl
 		// body := []byte(fmt.Sprintf("{\"imageUrl\": \"%s\"}", imageurl))
 		// resp, err := m.AiCloud.FakeFaceSearch(urlStr, http.MethodPost, body)
@@ -1277,7 +1277,7 @@ func (m *Manager) CaculateMostSimilarity(sample *model.PicSample) {
 }
 
 //计算当前图片与缓存集的相似度，注意该图片也在缓存集中，计算时需要过滤掉自己与自己的相似度
-func (m *Manager) caculateSimilarityWithCache(picSample *model.PicSample, cacheList *list.List, imageBase64 string, facesetName string) model.SRList {
+func (m *Manager) caculateSimilarityWithCache(picSample *model.PicSample, cacheList []model.PicSample, imageBase64 string, facesetName string) model.SRList {
 	m.CaculateSimilarity(picSample, imageBase64, facesetName)
 	result := model.SRList{}
 
@@ -1298,11 +1298,11 @@ func (m *Manager) caculateSimilarityWithCache(picSample *model.PicSample, cacheL
 }
 
 //按id从list中找到该对象
-func (m *Manager) getPicSample(id string, list *list.List) *model.PicSample {
-	if list.Len() > 0 {
-		for e := list.Front(); e != nil; e = e.Next() {
-			if e.Value.(model.PicSample).Id == id {
-				return e.Value.(*model.PicSample)
+func (m *Manager) getPicSample(id string, list []model.PicSample) *model.PicSample {
+	if len(list) > 0 {
+		for _, v := range list {
+			if v.Id == id {
+				return &v
 			}
 		}
 	}
@@ -1311,7 +1311,7 @@ func (m *Manager) getPicSample(id string, list *list.List) *model.PicSample {
 
 //保存到facedb数据库
 func (m *Manager) saveToRegisterDB(picSample *model.PicSample, facesetName string) error {
-	err := pkg.InsertIntoFacedb(m.Mydb, facesetName, picSample.Id, nil, picSample.ImageBase64, "", "", "", "", "", time.Now().UnixNano()/1e6, "", "", "facedb")
+	err := pkg.InsertIntoFacedb(m.Mydb, facesetName, picSample.Id, nil, picSample.ImageBase64, "", "", "", picSample.ImageAddress, picSample.ImageUrl, time.Now().UnixNano()/1e6, "", "", "facedb")
 	if err != nil {
 		glog.Errorf("Prepare INSERT faceinfo err: %s", err.Error())
 	}
@@ -1320,7 +1320,7 @@ func (m *Manager) saveToRegisterDB(picSample *model.PicSample, facesetName strin
 
 //保存到已识别的knowfaceinfo数据库
 func (m *Manager) saveToDetectDB(picSample *model.PicSample, facesetName string) error {
-	err := pkg.InsertIntoFacedb(m.Mydb, facesetName, picSample.Id, nil, picSample.ImageBase64, "", "", "", "", "", time.Now().UnixNano()/1e6, "", "", "knowfaceinfo")
+	err := pkg.InsertIntoFacedb(m.Mydb, facesetName, picSample.Id, nil, picSample.ImageBase64, "", "", "", picSample.ImageAddress, picSample.ImageUrl, time.Now().UnixNano()/1e6, "", "", "knowfaceinfo")
 	if err != nil {
 		glog.Errorf("Prepare INSERT faceinfo err: %s", err.Error())
 	}
@@ -1380,16 +1380,24 @@ func (m *Manager) caculateMostSimilarity(matrix *model.SRMatrix) model.SRList {
 }
 
 //将缓存的图片集放到云上
-func (m *Manager) addCacheFaceSet(cacheList *list.List, facesetName string) error {
-	if cacheList.Len() > 0 {
-		for pic := cacheList.Front(); pic != nil; pic = pic.Next() {
+func (m *Manager) addCacheFaceSet(cacheList []model.PicSample, facesetName string) error {
+	checkFacesetExist()
+	if len(cacheList) > 0 {
+		glog.Infof("cacheFaceSet size is %d", len(cacheList))
+		for _, picSample := range cacheList {
 			// first detect image face
-			imagedecode, err := base64.StdEncoding.DecodeString(pic.Value.(model.PicSample).ImageBase64)
+			//picSample, ok := pic.Value.(model.PicSample)
+			//if !ok {
+			//	glog.Errorf("element in list is not PicSample: ", pic.Value)
+			//	return nil
+			//}
+
+			imagedecode, err := base64.StdEncoding.DecodeString(picSample.ImageBase64)
 			if err != nil {
 				glog.Error(err)
 				return err
 			}
-			jdface, err := m.detectFace(pic.Value.(model.PicSample).ImageBase64)
+			jdface, err := m.detectFace(picSample.ImageBase64)
 			if err != nil {
 				glog.Error(err)
 				return err
@@ -1398,7 +1406,7 @@ func (m *Manager) addCacheFaceSet(cacheList *list.List, facesetName string) erro
 
 			// save to file
 			if jdface != nil {
-				imageaddress := m.CustConfig.StaticDir + "/" + facesetName + "/" + pic.Value.(model.PicSample).Id
+				imageaddress := m.CustConfig.StaticDir + "/" + facesetName + "/" + picSample.Id
 				fileToSave, err := os.OpenFile(imageaddress, os.O_WRONLY|os.O_CREATE, 0777)
 				if err != nil {
 					glog.Error(err)
@@ -1410,7 +1418,7 @@ func (m *Manager) addCacheFaceSet(cacheList *list.List, facesetName string) erro
 					return err
 				}
 
-				imageurl := "http://" + m.CustConfig.PublicHost + ":" + m.CustConfig.Port + "/" + facesetName + "/" + pic.Value.(model.PicSample).Id
+				imageurl := "http://" + m.CustConfig.PublicHost + ":" + m.CustConfig.Port + "/" + facesetName + "/" + picSample.Id
 				// /v1/faceSet/13345/addFace
 				urlStr := m.CustConfig.Aiurl + "/v1/faceSet/" + m.FaceidMap[facesetName] + "/addFace"
 				body := []byte(fmt.Sprintf("{\"imageUrl\": \"%s\", \"externalImageID\": \"%s\"}", imageurl, m.FaceidMap[facesetName]))
@@ -1437,11 +1445,11 @@ func (m *Manager) addCacheFaceSet(cacheList *list.List, facesetName string) erro
 }
 
 //从云上删除缓存的图像集
-func (m *Manager) deleteCacheFaceSet(cacheList *list.List, facesetName string) error {
-	if cacheList.Len() > 0 {
-		for pic := cacheList.Front(); pic != nil; pic = pic.Next() {
+func (m *Manager) deleteCacheFaceSet(cacheList []model.PicSample, facesetName string) error {
+	if len(cacheList) > 0 {
+		for _, picSample := range cacheList {
 			// delete from faceset
-			urlStr := m.CustConfig.Aiurl + "/v1/faceSet/" + m.FaceidMap[facesetName] + "/" + pic.Value.(model.PicSample).Id
+			urlStr := m.CustConfig.Aiurl + "/v1/faceSet/" + m.FaceidMap[facesetName] + "/" + picSample.Id
 			_, err := m.AiCloud.DeleteFace(urlStr, http.MethodDelete)
 			if err != nil {
 				glog.Error(err)
@@ -1449,7 +1457,7 @@ func (m *Manager) deleteCacheFaceSet(cacheList *list.List, facesetName string) e
 			}
 
 			//delete from os
-			imageurl := "http://" + m.CustConfig.PublicHost + ":" + m.CustConfig.Port + "/" + facesetName + "/" + pic.Value.(model.PicSample).Id
+			imageurl := "http://" + m.CustConfig.PublicHost + ":" + m.CustConfig.Port + "/" + facesetName + "/" + picSample.Id
 			glog.Infof("image location:%s", strings.Split(imageurl, ":"+m.CustConfig.Port)[1])
 			imageaddress := m.CustConfig.StaticDir + strings.Split(imageurl, ":"+m.CustConfig.Port)[1]
 			e := os.Remove(imageaddress)
@@ -1469,56 +1477,57 @@ func (m *Manager) cacheScheduler() {
 	//1.注册缓存
 	lock.Lock()
 	tempRegisterCache := m.UploadPortal.TempRegisterCache
-	tempRegisterCache.PushBack(m.UploadPortal.RegisterCache)
-	m.UploadPortal.RegisterCache.Init()
+	glog.Infof("the global cache size is %d", len(m.UploadPortal.RegisterCache))
+	tempRegisterCache = append(tempRegisterCache, m.UploadPortal.RegisterCache...)
+	m.UploadPortal.RegisterCache = nil
 	lock.Unlock()
 
-	if tempRegisterCache.Len() > 0 {
+	if len(tempRegisterCache) > 0 {
 		m.addCacheFaceSet(tempRegisterCache, "cacheFaceset")
 		for {
-			if tempRegisterCache.Len() == 0 {
+			if len(tempRegisterCache) == 0 {
 				break
 			}
 
-			picSample := tempRegisterCache.Back()
-			similaryRelations := m.caculateSimilarityWithCache(picSample.Value.(*model.PicSample), tempRegisterCache, picSample.Value.(*model.PicSample).ImageBase64, "cacheFaceset")
+			picSample, tempRegisterCache := &tempRegisterCache[len(tempRegisterCache)-1], tempRegisterCache[:len(tempRegisterCache)-2]
+			similaryRelations := m.caculateSimilarityWithCache(picSample, tempRegisterCache, picSample.ImageBase64, "cacheFaceset")
 
 			for i := 0; i < len(similaryRelations); i = i + 1 {
-				var n *list.Element
-				for e := tempRegisterCache.Front(); e != nil; e = n {
-					if e.Value.(model.PicSample).Id == similaryRelations[i].To.Id {
-						n = e.Next()
-						tempRegisterCache.Remove(e)
+				for j := len(tempRegisterCache) - 1; i >= 0; i-- {
+					if tempRegisterCache[j].Id == similaryRelations[i].To.Id {
+						glog.Infof("delete id %s from cache.", tempRegisterCache[j].Id)
+						tempRegisterCache = append(tempRegisterCache[:j], tempRegisterCache[j+1:]...)
 					}
 				}
 			}
-			tempRegisterCache.Remove(picSample)
 		}
-		m.deleteCacheFaceSet(tempRegisterCache, "cacheFaceset")
+		//tempRegisterCache.Remove(picSample)
+		//tempRegisterCache = tempRegisterCache[]
 	}
+	m.deleteCacheFaceSet(tempRegisterCache, "cacheFaceset")
 
 	//2.识别缓存
 	lock.Lock()
 	tempDetectCache := m.UploadPortal.TempDetectCache
-	tempDetectCache.PushBackList(m.UploadPortal.DetectCache)
-	m.UploadPortal.DetectCache.Init()
+	tempDetectCache = append(tempDetectCache, m.UploadPortal.DetectCache...)
+	m.UploadPortal.DetectCache = nil
 	lock.Unlock()
 
-	if tempDetectCache.Len() > 0 {
+	if len(tempDetectCache) > 0 {
 		m.addCacheFaceSet(tempDetectCache, "cacheFaceset")
 
 		srMetrix := model.SRMatrix{}
-		lastSaveMap := make(model.LastSaveMap)
+		lastSaveMap := make(model.LastSaveMap)//全局？
 
-		for e := tempDetectCache.Front(); e != nil; e = e.Next() {
-			similaryRelations := m.caculateSimilarityWithCache(e.Value.(*model.PicSample), tempDetectCache, e.Value.(*model.PicSample).ImageBase64, "cacheFaceset")
+		for _, picSample := range tempDetectCache {
+			similaryRelations := m.caculateSimilarityWithCache(&picSample, tempDetectCache, picSample.ImageBase64, "cacheFaceset")
 			srMetrix = append(srMetrix, similaryRelations)
 		}
 
 		if len(srMetrix) > 0 {
 			mostSimiliarityRelations := m.caculateMostSimilarity(&srMetrix)
 
-			tempDetectCache.Init()
+			tempDetectCache = nil
 
 			for i := 0; i < len(mostSimiliarityRelations); i = i + 1 {
 				fromPic := mostSimiliarityRelations[i].From
@@ -1529,7 +1538,7 @@ func (m *Manager) cacheScheduler() {
 
 					lastSaveMap[toPic] = fromPic.UploadTime
 				} else {
-					tempDetectCache.PushBack(fromPic)
+					tempDetectCache = append(tempDetectCache, *fromPic)
 				}
 			}
 		}

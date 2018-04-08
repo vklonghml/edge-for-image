@@ -100,7 +100,8 @@ func (ai *Accessai) DeleteFace(urlStr, httpMethod string,) ([]byte, error) {
 }
 
 func access(URL string, headers map[string]string, content []byte, contentLength int, httpMethod string, httpclient *http.Client) ([]byte, error) {
-	// glog.Infof("body: %s", content)
+	glog.Infof("url is : %s", URL)
+	//glog.Infof("body is : %s", content)
 	var reqBody io.Reader
 	var req *http.Request
 	var err error
