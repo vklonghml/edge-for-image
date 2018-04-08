@@ -62,7 +62,8 @@ type Manager struct {
 	AiCloud      *accessai.Accessai
 	Mydb         *sql.DB
 	FaceidMap    map[string]string
-	UploadPortal *model.UploadPortal
+	UploadPortal map[string]model.Caches
+	FacesetMap   map[string]int64
 }
 
 type BoundingBox struct {
@@ -133,56 +134,56 @@ func checkFacesetExist(config *pkg.Config, aicloud *accessai.Accessai, facesetma
 		// facesets = append(facesets, face)
 		facesetmap[face.FaceSetName] = face.FaceSetID
 	}
-	if _, ok := facesetmap[config.FaceSetName]; !ok {
-		urlStr := config.Aiurl + "/v1/faceSet"
-		body := []byte(fmt.Sprintf("{\"faceSetName\":\"%s\"}", config.FaceSetName))
-		// resp, err := aicloud.FakeCreateFaceset(urlStr, http.MethodPost, body)
-		resp, err := aicloud.CreateFaceset(urlStr, http.MethodPost, body)
-		if err != nil {
-			glog.Errorf("create faceset err: %s", err.Error())
-		}
-
-		// data, err := ioutil.ReadAll(resp.Body)
-		// if err != nil {
-		// 	db.Close()
-		// 	glog.Error(err)
-		// 	os.Exit(1)
-		// }
-
-		// glog.Infof("create faceset resp: %#v", resp)
-		// data := resp
-		bdata := make(map[string]interface{})
-		err = json.Unmarshal(resp, &bdata)
-		if err != nil {
-			glog.Errorf("Unmarshal err: %s", err.Error())
-		}
-
-		glog.Infof("create faceset data: %#v", bdata)
-		stmt, err := db.Prepare("INSERT faceset SET facesetname=?,facesetid=?,createtime=?")
-		if err != nil {
-			glog.Errorf("Prepare INSERT faceinfo err: %s", err.Error())
-			db.Close()
-			glog.Errorf("scan db err: %s", err.Error())
-			os.Exit(1)
-		}
-		defer stmt.Close()
-		glog.Infof("config faceset name=%s", config.FaceSetName)
-		_, err = stmt.Exec(config.FaceSetName, bdata["faceSetID"].(string), time.Now().UnixNano()/1e6)
-		if err != nil {
-			glog.Errorf("INSERT faceinfo err: %s", err.Error())
-			os.Exit(1)
-		}
-		facesetmap[config.FaceSetName] = bdata["faceSetID"].(string)
-	}
-
-	direc := config.StaticDir + "/" + config.FaceSetName
-	if _, err := os.Stat(direc); os.IsNotExist(err) {
-		err = os.Mkdir(direc, 0777)
-		if err != nil {
-			glog.Errorf("mkdir dir err: %s", err.Error())
-			os.Exit(1)
-		}
-	}
+	//if _, ok := facesetmap[config.FaceSetName]; !ok {
+	//	urlStr := config.Aiurl + "/v1/faceSet"
+	//	body := []byte(fmt.Sprintf("{\"faceSetName\":\"%s\"}", config.FaceSetName))
+	//	// resp, err := aicloud.FakeCreateFaceset(urlStr, http.MethodPost, body)
+	//	resp, err := aicloud.CreateFaceset(urlStr, http.MethodPost, body)
+	//	if err != nil {
+	//		glog.Errorf("create faceset err: %s", err.Error())
+	//	}
+	//
+	//	// data, err := ioutil.ReadAll(resp.Body)
+	//	// if err != nil {
+	//	// 	db.Close()
+	//	// 	glog.Error(err)
+	//	// 	os.Exit(1)
+	//	// }
+	//
+	//	// glog.Infof("create faceset resp: %#v", resp)
+	//	// data := resp
+	//	bdata := make(map[string]interface{})
+	//	err = json.Unmarshal(resp, &bdata)
+	//	if err != nil {
+	//		glog.Errorf("Unmarshal err: %s", err.Error())
+	//	}
+	//
+	//	glog.Infof("create faceset data: %#v", bdata)
+	//	stmt, err := db.Prepare("INSERT faceset SET facesetname=?,facesetid=?,createtime=?")
+	//	if err != nil {
+	//		glog.Errorf("Prepare INSERT faceinfo err: %s", err.Error())
+	//		db.Close()
+	//		glog.Errorf("scan db err: %s", err.Error())
+	//		os.Exit(1)
+	//	}
+	//	defer stmt.Close()
+	//	glog.Infof("config faceset name=%s", config.FaceSetName)
+	//	_, err = stmt.Exec(config.FaceSetName, bdata["faceSetID"].(string), time.Now().UnixNano()/1e6)
+	//	if err != nil {
+	//		glog.Errorf("INSERT faceinfo err: %s", err.Error())
+	//		os.Exit(1)
+	//	}
+	//	facesetmap[config.FaceSetName] = bdata["faceSetID"].(string)
+	//}
+	//
+	//direc := config.StaticDir + "/" + config.FaceSetName
+	//if _, err := os.Stat(direc); os.IsNotExist(err) {
+	//	err = os.Mkdir(direc, 0777)
+	//	if err != nil {
+	//		glog.Errorf("mkdir dir err: %s", err.Error())
+	//		os.Exit(1)
+	//	}
+	//}
 	glog.Infof("faceset map: %#v", facesetmap)
 
 	return db
@@ -197,13 +198,13 @@ func NewManager(config *pkg.Config) *Manager {
 	// }
 	aicloud := accessai.NewAccessai()
 	facesetmap := make(map[string]string)
-	uploadPortal := &model.UploadPortal{}
 	m := &Manager{
 		CustConfig:   config,
 		AiCloud:      aicloud,
 		Mydb:         checkFacesetExist(config, aicloud, facesetmap),
 		FaceidMap:    facesetmap,
-		UploadPortal: uploadPortal,
+		UploadPortal: make(map[string]model.Caches),
+		FacesetMap:   make(map[string]int64),
 	}
 	glog.Infof("facemap:%#v", m.FaceidMap)
 	return m
@@ -273,25 +274,25 @@ func (m *Manager) detectFace(imagebase64 string) ([]byte, error) {
 	return jdface, nil
 }
 
-func (m *Manager) saveImageToFile(imagename string, imageDecode []byte) error {
-	buf := bytes.NewBuffer(nil)
-	imageReader := bytes.NewReader(imageDecode)
-	if _, err := io.Copy(buf, imageReader); err != nil {
-		glog.Errorf("file copy to buf err: %s", err.Error())
-	}
-
-	imageaddress := m.CustConfig.StaticDir + "/" + m.CustConfig.FaceSetName + "/" + imagename
-	fileToSave, err := os.OpenFile(imageaddress, os.O_WRONLY|os.O_CREATE, 0777)
-	if err != nil {
-		glog.Error(err)
-		return err
-	}
-	defer fileToSave.Close()
-	if _, err := io.Copy(fileToSave, buf); err != nil {
-		glog.Errorf("buf copy to file err: %s", err.Error())
-	}
-	return nil
-}
+//func (m *Manager) saveImageToFile(imagename string, imageDecode []byte) error {
+//	buf := bytes.NewBuffer(nil)
+//	imageReader := bytes.NewReader(imageDecode)
+//	if _, err := io.Copy(buf, imageReader); err != nil {
+//		glog.Errorf("file copy to buf err: %s", err.Error())
+//	}
+//
+//	imageaddress := m.CustConfig.StaticDir + "/" + m.CustConfig.FaceSetName + "/" + imagename
+//	fileToSave, err := os.OpenFile(imageaddress, os.O_WRONLY|os.O_CREATE, 0777)
+//	if err != nil {
+//		glog.Error(err)
+//		return err
+//	}
+//	defer fileToSave.Close()
+//	if _, err := io.Copy(fileToSave, buf); err != nil {
+//		glog.Errorf("buf copy to file err: %s", err.Error())
+//	}
+//	return nil
+//}
 
 func (m *Manager) createFacesetIfNotExist(facesetname string) error {
 	// rows, err := db.Query("select * from faceset where facesetname = ?", config.FaceSetName)
@@ -349,6 +350,7 @@ func (m *Manager) searchFace(imageBase64, imagename, facesetname string) error {
 	if err := m.createFacesetIfNotExist(facesetname); err != nil {
 		return err
 	}
+	m.FacesetMap[facesetname] = time.Now().UnixNano() / 1e6
 
 	// imageBase64 := base64.StdEncoding.EncodeToString(buf.Bytes())
 	// imageBase64 = ""
@@ -361,7 +363,7 @@ func (m *Manager) searchFace(imageBase64, imagename, facesetname string) error {
 	}
 	imagename = fmt.Sprintf("%s", uid) + "-" + imagename
 	glog.Infof("the imagename is %s", imagename)
-	filexist := m.listAlllfiles(m.CustConfig.FaceSetName, imagename)
+	filexist := m.listAlllfiles(facesetname, imagename)
 	if filexist {
 		glog.Error("file name already exist")
 		return errors.New("file name already exist")
@@ -381,9 +383,13 @@ func (m *Manager) searchFace(imageBase64, imagename, facesetname string) error {
 	m.CaculateMostSimilarity(picSample)
 
 	if len(picSample.Similarity) > 0 {
-		m.UploadPortal.DetectCache = append(m.UploadPortal.DetectCache, *picSample)
+		portal := m.UploadPortal[facesetname]
+		portal.DetectCache = append(portal.DetectCache, *picSample)
+		m.UploadPortal[facesetname] = portal
 	} else {
-		m.UploadPortal.RegisterCache = append(m.UploadPortal.RegisterCache, *picSample)
+		portal := m.UploadPortal[facesetname]
+		portal.RegisterCache = append(portal.RegisterCache, *picSample)
+		m.UploadPortal[facesetname] = portal
 	}
 
 	/** 之前的方法，先留在这做参考，后面可以删除掉这段代码
@@ -476,60 +482,60 @@ func (m *Manager) searchFace(imageBase64, imagename, facesetname string) error {
 	// glog.Infof("resp :%s", data)
 }
 
-func (m *Manager) insertIntoKnow(largesimilar, imageaddress, imageurl string, face map[string]interface{}) error {
-	// re := regexp.M
-	faceidToS := face["faceID"].(string)
-	index := 0
-	for k := range faceidToS {
-		if string(faceidToS[k]) != "0" {
-			index = k
-			break
-		}
-	}
-	glog.Infof("index: %d, face:%s", index, faceidToS[index:len(faceidToS)])
-	// rows, err := m.Mydb.Query(fmt.Sprintf("select * from facedb where faceid regexp '%s$'", face["faceID"]))
-	rows, err := m.Mydb.Query("select * from facedb where faceid = ?", faceidToS[index:len(faceidToS)])
-	if err != nil {
-		glog.Errorf("Query db err: %s", err.Error())
-		return err
-	}
-	defer rows.Close()
-	var knowface FaceInfo
-	// var faceinteface interface{}
-	faceinteface := make([]byte, 255)
-	var id int
-	knowsfaces := make([]FaceInfo, 0)
-	for rows.Next() {
-		err := rows.Scan(&id, &knowface.FaceSetName, &knowface.FaceID, &faceinteface, &knowface.ImageBase64, &knowface.Name, &knowface.Age, &knowface.Address, &knowface.Imageaddress, &knowface.ImageURL, &knowface.CreateTime, &knowface.SimilaryImageURL, &knowface.Similarity)
-		if err != nil {
-			glog.Errorf("scan db err: %s", err.Error())
-			return err
-		}
-		knowsfaces = append(knowsfaces, knowface)
-	}
-	if len(knowsfaces) == 1 {
-		// insert know face
-		glog.Infof("byte:%#v", faceinteface)
-		// jsonface, err := json.Marshal(faceinteface)
-		// if err != nil {
-		// 	glog.Errorf("Marshal face err: %s", err.Error())
-		// 	return err
-		// }
-		err = pkg.InsertIntoFacedb(m.Mydb, m.CustConfig.FaceSetName, strconv.Itoa(id), faceinteface, "", knowface.Name, knowface.Age, knowface.Address, imageaddress, imageurl, time.Now().UnixNano()/1e6, knowface.ImageURL, largesimilar, "knowfaceinfo")
-		if err != nil {
-			glog.Errorf("INSERT faceinfo err: %s", err)
-			return err
-		}
-		glog.Infof("found similarity face: %s", face["similarity"])
-	} else if len(knowsfaces) == 0 {
-		glog.Errorf("facedb has no record of that faceid: %s", face["faceID"])
-		return errors.New("facedb has no record of that faceid")
-	} else {
-		glog.Errorf("facedb has two many faces that match the faceid: %s", face["faceID"])
-		return errors.New("facedb has two many faces that match the faceid")
-	}
-	return nil
-}
+//func (m *Manager) insertIntoKnow(largesimilar, imageaddress, imageurl string, face map[string]interface{}) error {
+//	// re := regexp.M
+//	faceidToS := face["faceID"].(string)
+//	index := 0
+//	for k := range faceidToS {
+//		if string(faceidToS[k]) != "0" {
+//			index = k
+//			break
+//		}
+//	}
+//	glog.Infof("index: %d, face:%s", index, faceidToS[index:len(faceidToS)])
+//	// rows, err := m.Mydb.Query(fmt.Sprintf("select * from facedb where faceid regexp '%s$'", face["faceID"]))
+//	rows, err := m.Mydb.Query("select * from facedb where faceid = ?", faceidToS[index:len(faceidToS)])
+//	if err != nil {
+//		glog.Errorf("Query db err: %s", err.Error())
+//		return err
+//	}
+//	defer rows.Close()
+//	var knowface FaceInfo
+//	// var faceinteface interface{}
+//	faceinteface := make([]byte, 255)
+//	var id int
+//	knowsfaces := make([]FaceInfo, 0)
+//	for rows.Next() {
+//		err := rows.Scan(&id, &knowface.FaceSetName, &knowface.FaceID, &faceinteface, &knowface.ImageBase64, &knowface.Name, &knowface.Age, &knowface.Address, &knowface.Imageaddress, &knowface.ImageURL, &knowface.CreateTime, &knowface.SimilaryImageURL, &knowface.Similarity)
+//		if err != nil {
+//			glog.Errorf("scan db err: %s", err.Error())
+//			return err
+//		}
+//		knowsfaces = append(knowsfaces, knowface)
+//	}
+//	if len(knowsfaces) == 1 {
+//		// insert know face
+//		glog.Infof("byte:%#v", faceinteface)
+//		// jsonface, err := json.Marshal(faceinteface)
+//		// if err != nil {
+//		// 	glog.Errorf("Marshal face err: %s", err.Error())
+//		// 	return err
+//		// }
+//		err = pkg.InsertIntoFacedb(m.Mydb, m.CustConfig.FaceSetName, strconv.Itoa(id), faceinteface, "", knowface.Name, knowface.Age, knowface.Address, imageaddress, imageurl, time.Now().UnixNano()/1e6, knowface.ImageURL, largesimilar, "knowfaceinfo")
+//		if err != nil {
+//			glog.Errorf("INSERT faceinfo err: %s", err)
+//			return err
+//		}
+//		glog.Infof("found similarity face: %s", face["similarity"])
+//	} else if len(knowsfaces) == 0 {
+//		glog.Errorf("facedb has no record of that faceid: %s", face["faceID"])
+//		return errors.New("facedb has no record of that faceid")
+//	} else {
+//		glog.Errorf("facedb has two many faces that match the faceid: %s", face["faceID"])
+//		return errors.New("facedb has two many faces that match the faceid")
+//	}
+//	return nil
+//}
 
 // func (m *Manager) insertIntoFacedb(facesetname, imageaddress, imageurl, name, age, address string, face interface{}) {
 func (m *Manager) insertIntoFacedb(facesetname, imageaddress, imageurl, name, age, address string, face []byte) {
@@ -659,14 +665,13 @@ func (m *Manager) upload(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(fmt.Sprintf("500 %s", err)))
 		}
-		//facesetname, ok := bdata["facesetname"].(string)
-		//if !ok {
-		//	glog.Error(err)
-		//	w.WriteHeader(http.StatusBadRequest)
-		//	w.Write([]byte(fmt.Sprintf("400 %s", err)))
-		//}
+		facesetname, ok := bdata["facesetname"].(string)
+		if !ok {
+			glog.Error(err)
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(fmt.Sprintf("400 %s", err)))
+		}
 
-		facesetname := "test_faceset"
 		go m.searchFace(imagebody, filename, facesetname)
 		// if  err != nil {
 		// 	w.WriteHeader(http.StatusInternalServerError)
@@ -1149,7 +1154,7 @@ func main() {
 	cron := cron.New()
 	spec := "*/10 * * * * ?"
 	cron.AddFunc(spec, func() {
-		m.cacheScheduler()
+		m.cacheSchedulerAll()
 	})
 	cron.Start()
 	//
@@ -1203,7 +1208,7 @@ func (m *Manager) CaculateSimilarity(picSample *model.PicSample, imageBase64 str
 	if jdface != nil {
 
 		//这里的sample.Id 就是图片在文件系统中存储的名字，格式为 UUID + 上传的原始图片名.
-		imageaddress := m.CustConfig.StaticDir + "/" + m.CustConfig.FaceSetName + "/" + picSample.Id
+		imageaddress := m.CustConfig.StaticDir + "/" + facesetname + "/" + picSample.Id
 		glog.Infof("the imageaddress is %s", imageaddress)
 		fileToSave, err := os.OpenFile(imageaddress, os.O_WRONLY|os.O_CREATE, 0777)
 		if err != nil {
@@ -1216,7 +1221,7 @@ func (m *Manager) CaculateSimilarity(picSample *model.PicSample, imageBase64 str
 		}
 
 		//进行1：N的搜索
-		imageurl := "http://" + m.CustConfig.PublicHost + ":" + m.CustConfig.Port + "/" + m.CustConfig.FaceSetName + "/" + picSample.Id
+		imageurl := "http://" + m.CustConfig.PublicHost + ":" + m.CustConfig.Port + "/" + facesetname + "/" + picSample.Id
 		picSample.ImageAddress = imageaddress
 		picSample.ImageUrl = imageurl
 		urlStr := m.CustConfig.Aiurl + "/v1/faceSet/" + m.FaceidMap[facesetname] + "/faceSearch?url=" + imageurl
@@ -1381,7 +1386,7 @@ func (m *Manager) caculateMostSimilarity(matrix *model.SRMatrix) model.SRList {
 
 //将缓存的图片集放到云上
 func (m *Manager) addCacheFaceSet(cacheList []model.PicSample, facesetName string) error {
-	checkFacesetExist()
+	m.createFacesetIfNotExist(facesetName + model.CACHE_SUFFIX)
 	if len(cacheList) > 0 {
 		glog.Infof("cacheFaceSet size is %d", len(cacheList))
 		for _, picSample := range cacheList {
@@ -1420,12 +1425,12 @@ func (m *Manager) addCacheFaceSet(cacheList []model.PicSample, facesetName strin
 
 				imageurl := "http://" + m.CustConfig.PublicHost + ":" + m.CustConfig.Port + "/" + facesetName + "/" + picSample.Id
 				// /v1/faceSet/13345/addFace
-				urlStr := m.CustConfig.Aiurl + "/v1/faceSet/" + m.FaceidMap[facesetName] + "/addFace"
-				body := []byte(fmt.Sprintf("{\"imageUrl\": \"%s\", \"externalImageID\": \"%s\"}", imageurl, m.FaceidMap[facesetName]))
+				urlStr := m.CustConfig.Aiurl + "/v1/faceSet/" + m.FaceidMap[facesetName+model.CACHE_SUFFIX] + "/addFace"
+				body := []byte(fmt.Sprintf("{\"imageUrl\": \"%s\", \"faceSetId\": \"%s\"}", imageurl, m.FaceidMap[facesetName+model.CACHE_SUFFIX]))
 				// resp, err := m.AiCloud.FakeAddFace(urlStr, http.MethodPost, body)
 				resp, err := m.AiCloud.AddFace(urlStr, http.MethodPut, body)
 				if err != nil {
-					glog.Errorf("search face err: %s", err.Error())
+					glog.Errorf("add to faceset err: %s", err.Error())
 				}
 				data := resp
 				// glog.Infof("string:%s, resp :%#v", data, data)
@@ -1449,7 +1454,7 @@ func (m *Manager) deleteCacheFaceSet(cacheList []model.PicSample, facesetName st
 	if len(cacheList) > 0 {
 		for _, picSample := range cacheList {
 			// delete from faceset
-			urlStr := m.CustConfig.Aiurl + "/v1/faceSet/" + m.FaceidMap[facesetName] + "/" + picSample.Id
+			urlStr := m.CustConfig.Aiurl + "/v1/faceSet/" + m.FaceidMap[facesetName+model.CACHE_SUFFIX] + "/" + picSample.Id
 			_, err := m.AiCloud.DeleteFace(urlStr, http.MethodDelete)
 			if err != nil {
 				glog.Error(err)
@@ -1469,21 +1474,32 @@ func (m *Manager) deleteCacheFaceSet(cacheList []model.PicSample, facesetName st
 	return nil
 }
 
+func (m *Manager) cacheSchedulerAll() {
+	//对所有的人脸集进行调度
+	for k, _ := range m.FacesetMap {
+		if k != "" {
+			m.cacheScheduler(k);
+		}
+	}
+}
+
 //缓存调度器
-func (m *Manager) cacheScheduler() {
+func (m *Manager) cacheScheduler(facesetname string) {
 	//分两个任务调度
 	var lock sync.RWMutex
 
 	//1.注册缓存
 	lock.Lock()
-	tempRegisterCache := m.UploadPortal.TempRegisterCache
-	glog.Infof("the global cache size is %d", len(m.UploadPortal.RegisterCache))
-	tempRegisterCache = append(tempRegisterCache, m.UploadPortal.RegisterCache...)
-	m.UploadPortal.RegisterCache = nil
+	portal := m.UploadPortal[facesetname]
+	tempRegisterCache := portal.TempRegisterCache
+	glog.Infof("starting schedule faceset: %s, its cache size is %d", facesetname, len(portal.RegisterCache))
+	tempRegisterCache = append(tempRegisterCache, portal.RegisterCache...)
+	portal.RegisterCache = nil
+	m.UploadPortal[facesetname] = portal
 	lock.Unlock()
 
 	if len(tempRegisterCache) > 0 {
-		m.addCacheFaceSet(tempRegisterCache, "cacheFaceset")
+		m.addCacheFaceSet(tempRegisterCache, facesetname)
 		for {
 			if len(tempRegisterCache) == 0 {
 				break
@@ -1504,23 +1520,25 @@ func (m *Manager) cacheScheduler() {
 		//tempRegisterCache.Remove(picSample)
 		//tempRegisterCache = tempRegisterCache[]
 	}
-	m.deleteCacheFaceSet(tempRegisterCache, "cacheFaceset")
+	m.deleteCacheFaceSet(tempRegisterCache, facesetname)
 
 	//2.识别缓存
 	lock.Lock()
-	tempDetectCache := m.UploadPortal.TempDetectCache
-	tempDetectCache = append(tempDetectCache, m.UploadPortal.DetectCache...)
-	m.UploadPortal.DetectCache = nil
+	portal = m.UploadPortal[facesetname]
+	tempDetectCache := portal.TempDetectCache
+	tempDetectCache = append(tempDetectCache, portal.DetectCache...)
+	portal.DetectCache = nil
+	m.UploadPortal[facesetname] = portal
 	lock.Unlock()
 
 	if len(tempDetectCache) > 0 {
-		m.addCacheFaceSet(tempDetectCache, "cacheFaceset")
+		m.addCacheFaceSet(tempDetectCache, facesetname)
 
 		srMetrix := model.SRMatrix{}
-		lastSaveMap := make(model.LastSaveMap)//全局？
+		lastSaveMap := make(model.LastSaveMap) //全局？
 
 		for _, picSample := range tempDetectCache {
-			similaryRelations := m.caculateSimilarityWithCache(&picSample, tempDetectCache, picSample.ImageBase64, "cacheFaceset")
+			similaryRelations := m.caculateSimilarityWithCache(&picSample, tempDetectCache, picSample.ImageBase64, facesetname+model.CACHE_SUFFIX)
 			srMetrix = append(srMetrix, similaryRelations)
 		}
 
@@ -1534,7 +1552,7 @@ func (m *Manager) cacheScheduler() {
 				toPic := mostSimiliarityRelations[i].To
 
 				if fromPic.UploadTime-lastSaveMap[toPic] > 30*1000 {
-					m.saveToDetectDB(fromPic, m.CustConfig.FaceSetName)
+					m.saveToDetectDB(fromPic, facesetname)
 
 					lastSaveMap[toPic] = fromPic.UploadTime
 				} else {
@@ -1542,6 +1560,6 @@ func (m *Manager) cacheScheduler() {
 				}
 			}
 		}
-		m.deleteCacheFaceSet(tempDetectCache, "cacheFaceset")
+		m.deleteCacheFaceSet(tempDetectCache, facesetname)
 	}
 }

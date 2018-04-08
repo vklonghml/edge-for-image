@@ -17,7 +17,10 @@ type SimilaryRelation struct {
 	UploadTime int64
 }
 
-type UploadPortal struct {
+//key is faceset_name
+//type UploadPortal map[string]Caches
+
+type Caches struct {
 	DetectCache       []PicSample
 	RegisterCache     []PicSample
 	TempRegisterCache []PicSample
@@ -35,3 +38,5 @@ type SRFromMap map[*PicSample]int32
 type SRToMap map[*PicSample]int32
 
 type SRMap map[*PicSample]map[*PicSample]int32
+
+const CACHE_SUFFIX = "_cache"

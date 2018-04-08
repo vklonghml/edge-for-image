@@ -3,7 +3,6 @@
 --v=2 \
 --alsologtostderr \
 --db-conn-str="root:@tcp(127.0.0.1:3306)/testaicloud" \
---faceset-name=huawei-cto \
 --host=192.168.1.52 \
 --public-host=49.4.5.210 \
 --port=9090 \
