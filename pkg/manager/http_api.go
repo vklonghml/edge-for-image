@@ -46,7 +46,7 @@ func (m *Manager) Faceset(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = m.createFacesetIfNotExist(py.Faceset.Name);
+		err = m.CreateFacesetIfNotExist(py.Faceset.Name);
 		if err != nil {
 			glog.Error(err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -151,7 +151,7 @@ func (m *Manager) Batchdeletefaces(w http.ResponseWriter, r *http.Request) {
 		}
 		blist := bdata["faces"].([]interface{})
 		facesetname := bdata["facesetname"].(string)
-		err = m.deletefaces(facesetname, blist, true)
+		err = m.Deletefaces(facesetname, blist, true)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(fmt.Sprintf("500 %s", err)))
@@ -232,7 +232,7 @@ func (m *Manager) AddFace(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(fmt.Sprintf("500 decode image err")))
 			return
 		}
-		jdface, err := m.detectFace(bdata["imagebase64"].(string))
+		jdface, err := m.DetectFace(bdata["imagebase64"].(string))
 		if err != nil {
 			glog.Error(err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -345,7 +345,7 @@ func (m *Manager) Listfaces(w http.ResponseWriter, r *http.Request) {
 			glog.Error("unkonw search")
 			return
 		}
-		faces, err := m.getAllfaces(facesetname, table, start, end, number, timeby)
+		faces, err := m.GetAllfaces(facesetname, table, start, end, number, timeby)
 		if err != nil {
 			glog.Error(err)
 			w.WriteHeader(http.StatusInternalServerError)

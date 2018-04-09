@@ -6,6 +6,7 @@ import (
 	"edge-for-image/pkg/accessai"
 	"edge-for-image/pkg/manager"
 	"edge-for-image/pkg/model"
+	"edge-for-image/pkg/scheduler"
 	"github.com/golang/glog"
 	"github.com/robfig/cron"
 	"net/http"
@@ -17,13 +18,14 @@ import (
 func main() {
 	config := pkg.InitConfig()
 	m := NewManager(config)
+	s := scheduler.Scheduler{}
 
 	//定时调度
 	cron := cron.New()
 	spec := "*/20 * * * * ?"
 	cron.AddFunc(spec, func() {
 
-		m.CacheSchedulerAll()
+		s.CacheSchedulerAll(m)
 	})
 	cron.Start()
 	//

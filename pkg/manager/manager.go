@@ -1,13 +1,10 @@
 package manager
 
 import (
-	// "bufio"
-	"bytes"
+	"edge-for-image/pkg/db"
 	"edge-for-image/pkg/model"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"io"
 	"io/ioutil"
 	// "path/filepath"
 	// "flag"
@@ -106,7 +103,7 @@ func (m *Manager) listAlllfiles(facesetname, filename string) bool {
 	return false
 }
 
-func (m *Manager) detectFace(imagebase64 string) ([]byte, error) {
+func (m *Manager) DetectFace(imagebase64 string) ([]byte, error) {
 	// first detect image face
 	urlStr := m.CustConfig.Aiurl + "/v1/faceDetect"
 	body := []byte(fmt.Sprintf("{\"imageBase64\": \"%s\"}", imagebase64))
@@ -177,7 +174,7 @@ func (m *Manager) detectFace(imagebase64 string) ([]byte, error) {
 //	return nil
 //}
 
-func (m *Manager) createFacesetIfNotExist(facesetname string) error {
+func (m *Manager) CreateFacesetIfNotExist(facesetname string) error {
 	// rows, err := db.Query("select * from faceset where facesetname = ?", config.FaceSetName)
 	for key := range m.FaceidMap {
 		if key == facesetname {
@@ -236,7 +233,7 @@ func (m *Manager) createFacesetIfNotExist(facesetname string) error {
 }
 
 func (m *Manager) searchFace(imageBase64, imagename, facesetname string) error {
-	if err := m.createFacesetIfNotExist(facesetname); err != nil {
+	if err := m.CreateFacesetIfNotExist(facesetname); err != nil {
 		return err
 	}
 	m.FacesetMap[facesetname] = time.Now().UnixNano() / 1e6
@@ -460,13 +457,13 @@ func (m *Manager) insertIntoFacedb(facesetname, imageaddress, imageurl, name, ag
 	// 	return
 	// }
 
-	err = pkg.InsertIntoFacedb(m.Mydb, facesetname, bdata["faceID"].(string), face, "", name, age, address, imageaddress, imageurl, time.Now().UnixNano()/1e6, "", "", "facedb")
+	err = db.InsertIntoFacedb(m.Mydb, facesetname, bdata["faceID"].(string), face, "", name, age, address, imageaddress, imageurl, time.Now().UnixNano()/1e6, "", "", "facedb")
 	if err != nil {
 		glog.Errorf("Prepare INSERT faceinfo err: %s", err.Error())
 	}
 }
 
-func (m *Manager) getAllfaces(facesetname, table string, start, end, numbers int64, timeby bool) ([]FaceInfo, error) {
+func (m *Manager) GetAllfaces(facesetname, table string, start, end, numbers int64, timeby bool) ([]FaceInfo, error) {
 	sort := "desc"
 	if !timeby {
 		sort = "asc"
@@ -528,7 +525,7 @@ func (m *Manager) getAllfaces(facesetname, table string, start, end, numbers int
 	return knowsfaces, nil
 }
 
-func (m *Manager) deletefaces(facesetname string, blist []interface{}, deleteimage bool) error {
+func (m *Manager) Deletefaces(facesetname string, blist []interface{}, deleteimage bool) error {
 	glog.Infof("%#v", blist)
 	var id string
 	var faceid string
@@ -616,7 +613,7 @@ func (m *Manager) updateface(face map[string]interface{}) error {
 	if err != nil {
 		return err
 	}
-	m.createFacesetIfNotExist(facesetname)
+	m.CreateFacesetIfNotExist(facesetname)
 	// glog.Infof("face:%#v", facem)
 	if isknown == "1" && isadd && faceid == "" {
 		splitstr := ":" + m.CustConfig.Port
@@ -629,7 +626,7 @@ func (m *Manager) updateface(face map[string]interface{}) error {
 		fmap["imageurl"] = imageurl
 		fmap["isknown"] = "1"
 		blist = append(blist, fmap)
-		m.deletefaces(facesetname, blist, false)
+		m.Deletefaces(facesetname, blist, false)
 	} else {
 		// glog.Infof("faceid:%s", faceid)
 		if isknown == "0" {
@@ -656,300 +653,4 @@ func (m *Manager) updateface(face map[string]interface{}) error {
 
 func (m *Manager) timeToRemoveImages() {
 
-}
-
-//计算相似度
-func (m *Manager) CaculateSimilarity(picSample *model.PicSample, imageBase64 string, facesetname string) error {
-
-	//base64解码
-	imageDecode, err := base64.StdEncoding.DecodeString(imageBase64)
-	if err != nil {
-		glog.Error("DecodeString err")
-		return errors.New("DecodeString image err")
-	}
-	buf := bytes.NewBuffer(nil)
-	imageReader := bytes.NewReader(imageDecode)
-	if _, err := io.Copy(buf, imageReader); err != nil {
-		glog.Errorf("file copy to buf err: %s", err.Error())
-	}
-
-	// first detect image face
-	jdface, err := m.detectFace(imageBase64)
-	if err != nil {
-		glog.Error(err)
-		return err
-	}
-	glog.Infof("dface: %#v", jdface)
-
-	// search face in faceset
-	// /v1/faceSet/13345/faceSearch?url=http://100.114.203.102/data/2_8.png
-	//如果检测到人脸了，就先存储到文件系统，然后进行1：N的人脸搜索
-	if jdface != nil {
-
-		//这里的sample.Id 就是图片在文件系统中存储的名字，格式为 UUID + 上传的原始图片名.
-		imageaddress := m.CustConfig.StaticDir + "/" + facesetname + "/" + picSample.Id
-		glog.Infof("the imageaddress is %s", imageaddress)
-		fileToSave, err := os.OpenFile(imageaddress, os.O_WRONLY|os.O_CREATE, 0777)
-		if err != nil {
-			glog.Error(err)
-			return err
-		}
-		defer fileToSave.Close()
-		if _, err := io.Copy(fileToSave, buf); err != nil {
-			glog.Errorf("buf copy to file err: %s", err.Error())
-		}
-
-		//进行1：N的搜索
-		imageurl := "http://" + m.CustConfig.PublicHost + ":" + m.CustConfig.Port + "/" + facesetname + "/" + picSample.Id
-		picSample.ImageAddress = imageaddress
-		picSample.ImageUrl = imageurl
-		urlStr := m.CustConfig.Aiurl + "/v1/faceSet/" + m.FaceidMap[facesetname] + "/faceSearch?url=" + imageurl
-		// body := []byte(fmt.Sprintf("{\"imageUrl\": \"%s\"}", imageurl))
-		// resp, err := m.AiCloud.FakeFaceSearch(urlStr, http.MethodPost, body)
-		resp, err := m.AiCloud.FaceSearch(urlStr, http.MethodGet, nil)
-		if err != nil {
-			glog.Errorf(err.Error())
-			return err
-		}
-		if strings.Contains(string(resp), "have no face") {
-			glog.Error("image have no face")
-			return nil
-		}
-		data := resp
-		// glog.Infof("resp :%#v", data)
-		bdata := make(map[string]interface{})
-		err = json.Unmarshal(data, &bdata)
-		if err != nil {
-			glog.Errorf(err.Error())
-			return err
-		}
-		faces := bdata["faces"].([]interface{})
-
-		// glog.Infof("resp :%#v", faces)
-		//largeface := make(map[string]interface{})
-		//var largesimilar int64
-		if len(faces) > 0 {
-			// found := false
-			for _, v := range faces {
-				face := v.(map[string]interface{})
-				faceid := face["faceID"].(string)
-				similar, err := strconv.ParseInt(face["similarity"].(string), 10, 32)
-				if err != nil {
-					glog.Errorf("parse error: %s", err.Error())
-				}
-				picSample.Similarity[faceid] = int32(similar)
-				glog.Infof("face similarity: %s", face["similarity"])
-			}
-		}
-	}
-	return nil
-}
-
-//计算picsample与注册库中最相似的id
-func (m *Manager) CaculateMostSimilarity(sample *model.PicSample) {
-	var curMostSimilarityValue int32 = 0
-	curMostSimilarityKey := ""
-	if len(sample.Similarity) > 0 {
-		for k, v := range sample.Similarity {
-			if v > curMostSimilarityValue {
-				curMostSimilarityKey = k
-				curMostSimilarityValue = v
-			}
-		}
-		sample.MostSimilar = curMostSimilarityKey
-	}
-}
-
-//计算当前图片与缓存集的相似度，注意该图片也在缓存集中，计算时需要过滤掉自己与自己的相似度
-func (m *Manager) caculateSimilarityWithCache(picSample *model.PicSample, cacheList []model.PicSample, imageBase64 string, facesetName string) model.SRList {
-	m.CaculateSimilarity(picSample, imageBase64, facesetName)
-	result := model.SRList{}
-
-	for k, v := range picSample.Similarity {
-		//如果相似度大于99，认为是缓存中存在该图片，需要过滤处理
-		if v < 99 {
-			to := m.getPicSample(k, cacheList)
-			if to != nil {
-				temp := model.SimilaryRelation{}
-				temp.Similary = v
-				temp.From = picSample
-				temp.To = to
-				result = append(result, temp)
-			}
-		}
-	}
-	return result
-}
-
-//按id从list中找到该对象
-func (m *Manager) getPicSample(id string, list []model.PicSample) *model.PicSample {
-	if len(list) > 0 {
-		for _, v := range list {
-			if v.Id == id {
-				return &v
-			}
-		}
-	}
-	return nil
-}
-
-//保存到facedb数据库
-func (m *Manager) saveToRegisterDB(picSample *model.PicSample, facesetName string) error {
-	err := pkg.InsertIntoFacedb(m.Mydb, facesetName, picSample.Id, nil, picSample.ImageBase64, "", "", "", picSample.ImageAddress, picSample.ImageUrl, time.Now().UnixNano()/1e6, "", "", "facedb")
-	if err != nil {
-		glog.Errorf("Prepare INSERT faceinfo err: %s", err.Error())
-	}
-	return err
-}
-
-//保存到已识别的knowfaceinfo数据库
-func (m *Manager) saveToDetectDB(picSample *model.PicSample, facesetName string) error {
-	err := pkg.InsertIntoFacedb(m.Mydb, facesetName, picSample.Id, nil, picSample.ImageBase64, "", "", "", picSample.ImageAddress, picSample.ImageUrl, time.Now().UnixNano()/1e6, "", "", "knowfaceinfo")
-	if err != nil {
-		glog.Errorf("Prepare INSERT faceinfo err: %s", err.Error())
-	}
-	return err
-}
-
-//从相似矩阵获取最相似列表
-func (m *Manager) caculateMostSimilarity(matrix *model.SRMatrix) model.SRList {
-	result := model.SRList{}
-
-	srFromMap := model.SRFromMap{}
-	srToMap := model.SRToMap{}
-	srMap := model.SRMap{}
-
-	for _, srList := range *matrix {
-		for _, sr := range srList {
-			if v, ok := srFromMap[sr.From]; ok {
-				if sr.Similary > v {
-					srFromMap[sr.From] = sr.Similary
-					tempToMap := model.SRToMap{}
-					tempToMap[sr.To] = sr.Similary
-					srMap[sr.From] = tempToMap
-				}
-			} else {
-				srFromMap[sr.From] = sr.Similary
-				tempToMap := model.SRToMap{}
-				tempToMap[sr.To] = sr.Similary
-				srMap[sr.From] = tempToMap
-			}
-
-			if v, ok := srToMap[sr.To]; ok {
-				if sr.Similary > v {
-					srToMap[sr.To] = sr.Similary
-					tempToMap := model.SRToMap{}
-					tempToMap[sr.To] = sr.Similary
-					srMap[sr.From] = tempToMap
-				} else {
-					srToMap[sr.To] = sr.Similary
-					tempToMap := model.SRToMap{}
-					tempToMap[sr.To] = sr.Similary
-					srMap[sr.From] = tempToMap
-				}
-			}
-		}
-	}
-
-	for from, toMap := range srMap {
-		for to, similarity := range toMap {
-			var sr model.SimilaryRelation
-			sr.From = from
-			sr.To = to
-			sr.Similary = similarity
-			result = append(result, sr)
-		}
-	}
-	return result
-}
-
-//将缓存的图片集放到云上
-func (m *Manager) addCacheFaceSet(cacheList []model.PicSample, facesetName string) error {
-	m.createFacesetIfNotExist(facesetName + model.CACHE_SUFFIX)
-	if len(cacheList) > 0 {
-		glog.Infof("cacheFaceSet size is %d", len(cacheList))
-		for _, picSample := range cacheList {
-			// first detect image face
-			//picSample, ok := pic.Value.(model.PicSample)
-			//if !ok {
-			//	glog.Errorf("element in list is not PicSample: ", pic.Value)
-			//	return nil
-			//}
-
-			imagedecode, err := base64.StdEncoding.DecodeString(picSample.ImageBase64)
-			if err != nil {
-				glog.Error(err)
-				return err
-			}
-			jdface, err := m.detectFace(picSample.ImageBase64)
-			if err != nil {
-				glog.Error(err)
-				return err
-			}
-			glog.Infof("dface: %#v", jdface)
-
-			// save to file
-			if jdface != nil {
-				imageaddress := m.CustConfig.StaticDir + "/" + facesetName + "/" + picSample.Id
-				fileToSave, err := os.OpenFile(imageaddress, os.O_WRONLY|os.O_CREATE, 0777)
-				if err != nil {
-					glog.Error(err)
-					return err
-				}
-				defer fileToSave.Close()
-				if _, err := fileToSave.Write(imagedecode); err != nil {
-					glog.Errorf("buf copy to file err: %s", err.Error())
-					return err
-				}
-
-				imageurl := "http://" + m.CustConfig.PublicHost + ":" + m.CustConfig.Port + "/" + facesetName + "/" + picSample.Id
-				// /v1/faceSet/13345/addFace
-				urlStr := m.CustConfig.Aiurl + "/v1/faceSet/" + m.FaceidMap[facesetName+model.CACHE_SUFFIX] + "/addFace"
-				body := []byte(fmt.Sprintf("{\"imageUrl\": \"%s\", \"faceSetId\": \"%s\"}", imageurl, m.FaceidMap[facesetName+model.CACHE_SUFFIX]))
-				// resp, err := m.AiCloud.FakeAddFace(urlStr, http.MethodPost, body)
-				glog.Infof("addCacheFaceSet: the urlStr is %s, body is %s.", urlStr, body)
-				resp, err := m.AiCloud.AddFace(urlStr, http.MethodPut, body)
-				if err != nil {
-					glog.Errorf("add to faceset err: %s", err.Error())
-				}
-				data := resp
-				// glog.Infof("string:%s, resp :%#v", data, data)
-				if len(resp) == 0 {
-					glog.Errorf("add face return 0 length")
-					return err
-				}
-				bdata := make(map[string]interface{})
-				json.Unmarshal(data, &bdata)
-
-			} else {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-//从云上删除缓存的图像集
-func (m *Manager) deleteCacheFaceSet(cacheList []model.PicSample, facesetName string) error {
-	if len(cacheList) > 0 {
-		for _, picSample := range cacheList {
-			// delete from faceset
-			urlStr := m.CustConfig.Aiurl + "/v1/faceSet/" + m.FaceidMap[facesetName+model.CACHE_SUFFIX] + "/" + picSample.Id
-			_, err := m.AiCloud.DeleteFace(urlStr, http.MethodDelete)
-			if err != nil {
-				glog.Error(err)
-				return err
-			}
-
-			//delete from os
-			imageurl := "http://" + m.CustConfig.PublicHost + ":" + m.CustConfig.Port + "/" + facesetName + "/" + picSample.Id
-			glog.Infof("image location:%s", strings.Split(imageurl, ":"+m.CustConfig.Port)[1])
-			imageaddress := m.CustConfig.StaticDir + strings.Split(imageurl, ":"+m.CustConfig.Port)[1]
-			e := os.Remove(imageaddress)
-			if e != nil {
-				glog.Error("remove err:%s", e)
-			}
-		}
-	}
-	return nil
 }
