@@ -11,10 +11,9 @@ type PicSample struct {
 }
 
 type SimilaryRelation struct {
-	From       *PicSample
-	To         *PicSample
-	Similary   int32
-	UploadTime int64
+	From     *PicSample
+	To       *PicSample
+	Similary int32
 }
 
 //key is faceset_name
@@ -40,3 +39,5 @@ type SRSingleMap map[*PicSample]int32
 type SRDoubleMap map[*PicSample]map[*PicSample]int32
 
 const CACHE_SUFFIX = "_cache"
+
+const PIC_TIME_OUT_SEC = 10

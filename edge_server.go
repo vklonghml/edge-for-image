@@ -64,7 +64,8 @@ func NewManager(config *pkg.Config) *manager.Manager {
 		AiCloud:      aicloud,
 		Mydb:         checkFacesetExist(config, aicloud, facesetmap),
 		FaceidMap:    facesetmap,
-		UploadPortal: make(map[string]model.Caches),
+		RegistCache:  make(map[string][]model.PicSample),
+		DetectCache:  make(map[string][]model.PicSample),
 		FacesetMap:   make(map[string]int64),
 	}
 	glog.Infof("facemap:%#v", m.FaceidMap)

@@ -3,6 +3,7 @@ package manager
 import (
 	"edge-for-image/pkg/db"
 	"edge-for-image/pkg/model"
+	"edge-for-image/pkg/payload"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
@@ -51,7 +52,9 @@ type Manager struct {
 	AiCloud      *accessai.Accessai
 	Mydb         *sql.DB
 	FaceidMap    map[string]string
-	UploadPortal map[string]model.Caches
+	UploadPortal map[string]model.Caches //to delete
+	DetectCache  map[string][]model.PicSample
+	RegistCache  map[string][]model.PicSample
 	FacesetMap   map[string]int64
 }
 
@@ -268,14 +271,10 @@ func (m *Manager) searchFace(imageBase64, imagename, facesetname string) error {
 	m.CaculateSimilarity(picSample, imageBase64, facesetname)
 	m.CaculateMostSimilarity(picSample)
 
-	if len(picSample.Similarity) > 0 {
-		portal := m.UploadPortal[facesetname]
-		portal.DetectCache = append(portal.DetectCache, *picSample)
-		m.UploadPortal[facesetname] = portal
+	if len(picSample.Similarity) > 90 {
+		m.DetectCache[facesetname] = append(m.DetectCache[facesetname], *picSample)
 	} else {
-		portal := m.UploadPortal[facesetname]
-		portal.RegisterCache = append(portal.RegisterCache, *picSample)
-		m.UploadPortal[facesetname] = portal
+		m.RegistCache[facesetname] = append(m.RegistCache[facesetname], *picSample)
 	}
 
 	/** 之前的方法，先留在这做参考，后面可以删除掉这段代码
@@ -658,4 +657,19 @@ func (m *Manager) DeleteFaceset(facesetname string) {
 	urlStr := m.CustConfig.Aiurl + "/v1/faceSet"
 	body := []byte(fmt.Sprintf("{\"faceSetName\":\"%s\"}", facesetname))
 	m.AiCloud.DeleteFaceset(urlStr, http.MethodDelete, body)
+}
+
+func (m *Manager) FaceVerify(url1 string, url2 string) (faceVerifyResp *payload.FaceVerifyResponse) {
+	urlStr := m.CustConfig.Aiurl + "/v1/faceVerify"
+	req := &payload.FaceVerifyRequest{
+		Image1URL: url1,
+		Image2Url: url2,
+	}
+	//todo: here igored error.
+	body, _ := json.Marshal(req)
+	resp, _ := m.AiCloud.FaceVerify(urlStr, http.MethodPost, body)
+
+	faceVerifyResp = &payload.FaceVerifyResponse{}
+	json.Unmarshal(resp, faceVerifyResp)
+	return faceVerifyResp
 }
