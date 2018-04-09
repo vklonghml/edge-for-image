@@ -65,7 +65,9 @@ func (s *Scheduler) cacheScheduler(facesetname string, m *manager.Manager) {
 
 	}
 	//delate all
-	s.deleteCacheFaceSet(tempRegisterCache, facesetname, m)
+	m.DeleteFaceset(getCacheFacesetName(facesetname))
+	m.CreateFacesetIfNotExist(getCacheFacesetName(facesetname))
+	//s.deleteCacheFaceSet(tempRegisterCache, facesetname, m)
 
 	//2.识别缓存
 	lock.Lock()

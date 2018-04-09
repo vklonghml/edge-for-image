@@ -583,7 +583,7 @@ func (m *Manager) Deletefaces(facesetname string, blist []interface{}, deleteima
 				return err
 			}
 		} else {
-			glog.Warning("unkonw face table to delete")
+			glog.Warning("unknow face table to delete")
 		}
 
 		if deleteimage {
@@ -653,4 +653,9 @@ func (m *Manager) updateface(face map[string]interface{}) error {
 
 func (m *Manager) timeToRemoveImages() {
 
+}
+func (m *Manager) DeleteFaceset(facesetname string) {
+	urlStr := m.CustConfig.Aiurl + "/v1/faceSet"
+	body := []byte(fmt.Sprintf("{\"faceSetName\":\"%s\"}", facesetname))
+	m.AiCloud.DeleteFaceset(urlStr, http.MethodDelete, body)
 }
