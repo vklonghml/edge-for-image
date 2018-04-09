@@ -19,20 +19,20 @@ const (
 )
 
 var (
-	connectionTimeout           = defaultConnectTimeout
-	keepaliveTimeout            = defaultKeepAliveTimeout
-	responseReadTimeout         = defaultResponseReadTimeout
-	maxIdleConnectionsPerHost   = defaultMaxIdleConnectionsPerHost
+	connectionTimeout         = defaultConnectTimeout
+	keepaliveTimeout          = defaultKeepAliveTimeout
+	responseReadTimeout       = defaultResponseReadTimeout
+	maxIdleConnectionsPerHost = defaultMaxIdleConnectionsPerHost
 )
 
 // NewHTTPClient create new http client
 func NewHTTPClient() *http.Client {
 	transport := &http.Transport{
 		Dial: (&net.Dialer{
-			Timeout:    connectionTimeout,
-			KeepAlive:  keepaliveTimeout,
+			Timeout:   connectionTimeout,
+			KeepAlive: keepaliveTimeout,
 		}).Dial,
-		MaxIdleConnsPerHost: maxIdleConnectionsPerHost,
+		MaxIdleConnsPerHost:   maxIdleConnectionsPerHost,
 		ResponseHeaderTimeout: responseReadTimeout,
 		TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
 	}
@@ -65,4 +65,3 @@ func BuildRequest(method, urlStr string, body io.Reader, token string) (*http.Re
 	}
 	return req, nil
 }
-

@@ -5,5 +5,5 @@ type FacesetRequest struct {
 }
 
 type Faceset struct {
-	Name 	string `json:"name"`
+	Name string `json:"name"`
 }

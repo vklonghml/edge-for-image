@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/golang/glog"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/golang/glog"
 )
 
 // type FaceSet struct {

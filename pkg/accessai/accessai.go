@@ -14,7 +14,6 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/satori/go.uuid"
-
 )
 
 // Accessai define client to ad
@@ -97,14 +96,14 @@ func (ai *Accessai) AddFace(urlStr, httpMethod string, body []byte) ([]byte, err
 }
 
 // GetFace get face
-func (ai *Accessai) GetFace(urlStr, httpMethod string,) ([]byte, error) {
+func (ai *Accessai) GetFace(urlStr, httpMethod string, ) ([]byte, error) {
 	glog.Infof("GetFace: the url is: %s", urlStr)
 	resp, err := access(urlStr, nil, []byte(""), 0, httpMethod, ai.HTTPClient)
 	return resp, err
 }
 
 // DeleteFace delete face
-func (ai *Accessai) DeleteFace(urlStr, httpMethod string,) ([]byte, error) {
+func (ai *Accessai) DeleteFace(urlStr, httpMethod string, ) ([]byte, error) {
 	glog.Infof("DeleteFace: the url is: %s", urlStr)
 	resp, err := access(urlStr, nil, []byte(""), 0, httpMethod, ai.HTTPClient)
 	return resp, err
