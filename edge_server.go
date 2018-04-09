@@ -312,6 +312,12 @@ func (m *Manager) createFacesetIfNotExist(facesetname string) error {
 		return err
 	}
 
+	//if exist from ai, then it exist.
+	if strings.Contains(string(resp), "exist") {
+		glog.Infof("the faceset already exist")
+		return nil
+	}
+
 	bdata := make(map[string]interface{})
 	err = json.Unmarshal(resp, &bdata)
 	if err != nil {
@@ -363,11 +369,11 @@ func (m *Manager) searchFace(imageBase64, imagename, facesetname string) error {
 	}
 	imagename = fmt.Sprintf("%s", uid) + "-" + imagename
 	glog.Infof("the imagename is %s", imagename)
-	filexist := m.listAlllfiles(facesetname, imagename)
-	if filexist {
-		glog.Error("file name already exist")
-		return errors.New("file name already exist")
-	}
+	//filexist := m.listAlllfiles(facesetname, imagename)
+	//if filexist {
+	//	glog.Error("file name already exist")
+	//	return errors.New("file name already exist")
+	//}
 
 	//构造PicSample对象
 	picSample := &model.PicSample{
@@ -607,7 +613,7 @@ func (m *Manager) faceset(w http.ResponseWriter, r *http.Request) {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(fmt.Sprintf("creating faceset %s success or already exist.", py.Faceset.Name)))
+		w.Write([]byte(fmt.Sprintf("{\"status\": \"success\"")))
 		return
 	} else {
 		glog.Infof("the method %s is not implemented yet.", r.Method)
@@ -950,6 +956,7 @@ func (m *Manager) updateface(face map[string]interface{}) error {
 	if err != nil {
 		return err
 	}
+	m.createFacesetIfNotExist(facesetname)
 	// glog.Infof("face:%#v", facem)
 	if isknown == "1" && isadd && faceid == "" {
 		splitstr := ":" + m.CustConfig.Port
@@ -1074,12 +1081,12 @@ func (m *Manager) addFace(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		imagename := fmt.Sprintf("%s", uid) + "-" + bdata["imagename"].(string)
-		filexist := m.listAlllfiles(bdata["facesetname"].(string), imagename)
-		if filexist {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(fmt.Sprintf("500 %s", "file name already exist")))
-			return
-		}
+		//filexist := m.listAlllfiles(bdata["facesetname"].(string), imagename)
+		//if filexist {
+		//	w.WriteHeader(http.StatusInternalServerError)
+		//	w.Write([]byte(fmt.Sprintf("500 %s", "file name already exist")))
+		//	return
+		//}
 
 		// first detect image face
 		imagedecode, err := base64.StdEncoding.DecodeString(bdata["imagebase64"].(string))
@@ -1152,7 +1159,7 @@ func main() {
 
 	//定时调度
 	cron := cron.New()
-	spec := "*/10 * * * * ?"
+	spec := "*/20 * * * * ?"
 	cron.AddFunc(spec, func() {
 		m.cacheSchedulerAll()
 	})
@@ -1428,6 +1435,7 @@ func (m *Manager) addCacheFaceSet(cacheList []model.PicSample, facesetName strin
 				urlStr := m.CustConfig.Aiurl + "/v1/faceSet/" + m.FaceidMap[facesetName+model.CACHE_SUFFIX] + "/addFace"
 				body := []byte(fmt.Sprintf("{\"imageUrl\": \"%s\", \"faceSetId\": \"%s\"}", imageurl, m.FaceidMap[facesetName+model.CACHE_SUFFIX]))
 				// resp, err := m.AiCloud.FakeAddFace(urlStr, http.MethodPost, body)
+				glog.Infof("addCacheFaceSet: the urlStr is %s, body is %s.", urlStr, body)
 				resp, err := m.AiCloud.AddFace(urlStr, http.MethodPut, body)
 				if err != nil {
 					glog.Errorf("add to faceset err: %s", err.Error())
@@ -1501,12 +1509,14 @@ func (m *Manager) cacheScheduler(facesetname string) {
 	if len(tempRegisterCache) > 0 {
 		m.addCacheFaceSet(tempRegisterCache, facesetname)
 		for {
+			glog.Infof("for loop: tempRegisterCache size is %d.", len(tempRegisterCache))
 			if len(tempRegisterCache) == 0 {
 				break
 			}
 
-			picSample, tempRegisterCache := &tempRegisterCache[len(tempRegisterCache)-1], tempRegisterCache[:len(tempRegisterCache)-2]
-			similaryRelations := m.caculateSimilarityWithCache(picSample, tempRegisterCache, picSample.ImageBase64, "cacheFaceset")
+			picSample := &tempRegisterCache[len(tempRegisterCache)-1]
+			tempRegisterCache = tempRegisterCache[:len(tempRegisterCache)-1]
+			similaryRelations := m.caculateSimilarityWithCache(picSample, tempRegisterCache, picSample.ImageBase64, facesetname+model.CACHE_SUFFIX)
 
 			for i := 0; i < len(similaryRelations); i = i + 1 {
 				for j := len(tempRegisterCache) - 1; i >= 0; i-- {
@@ -1517,9 +1527,11 @@ func (m *Manager) cacheScheduler(facesetname string) {
 				}
 			}
 		}
-		//tempRegisterCache.Remove(picSample)
-		//tempRegisterCache = tempRegisterCache[]
+		//remove the last element, as know is picSample
+		//tempRegisterCache = tempRegisterCache[:len(tempRegisterCache)-1]
+
 	}
+	//delate all
 	m.deleteCacheFaceSet(tempRegisterCache, facesetname)
 
 	//2.识别缓存
