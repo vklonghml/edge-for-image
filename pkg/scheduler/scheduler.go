@@ -148,35 +148,85 @@ func (m *Scheduler) getPicSample(id string, list []model.PicSample) *model.PicSa
 func (m *Scheduler) caculateMostSimilarity(matrix *model.SRMatrix) model.SRList {
 	result := model.SRList{}
 
-	srFromMap := model.SRFromMap{}
-	srToMap := model.SRToMap{}
-	srMap := model.SRMap{}
+	srIdMap := model.SRIdMap{}
+	srMap := model.SRDoubleMap{}
 
 	for _, srList := range *matrix {
 		for _, sr := range srList {
-			if v, ok := srFromMap[sr.From]; ok {
-				if sr.Similary > v {
-					srFromMap[sr.From] = sr.Similary
-					tempToMap := model.SRToMap{}
-					tempToMap[sr.To] = sr.Similary
-					srMap[sr.From] = tempToMap
+			if v1, ok := srIdMap[sr.From.Id]; ok {
+				if sr.Similary >= v1 {
+					if v2, ok := srIdMap[sr.To.Id]; ok {
+						if sr.Similary >= v2 {
+							//eg. a-b-86,c-d-87,当出现a-c-98时，需要删除a-b-86和c-d-87，并添加a-c-98
+							for k1 := range srMap {
+								for k2 := range srMap[k1] {
+									if k1.Id == sr.From.Id || k1.Id == sr.To.Id || k2.Id == sr.From.Id || k2.Id == sr.To.Id {
+										srMap[k1] = nil
+									}
+								}
+							}
+							srIdMap[sr.From.Id] = sr.Similary
+							srIdMap[sr.To.Id] = sr.Similary
+							tempToMap := model.SRSingleMap{}
+							tempToMap[sr.To] = sr.Similary
+							srMap[sr.From] = tempToMap
+						} else {
+							//eg. a-b-98，c-d-85，当出现d-a-86时，需要将c-d-85删掉
+							for k1 := range srMap {
+								for k2 := range srMap[k1] {
+									if k1.Id == sr.From.Id || k2.Id == sr.From.Id {
+										srMap[k1] = nil
+									}
+								}
+							}
+						}
+					} else {
+						//eg. a-b-86，当出现a-c-98时，需要删掉a-b-86，添加a-c-98
+						for k1 := range srMap {
+							for k2 := range srMap[k1] {
+								if k1.Id == sr.From.Id || k1.Id == sr.To.Id || k2.Id == sr.From.Id || k2.Id == sr.To.Id {
+									srMap[k1] = nil
+								}
+							}
+						}
+						srIdMap[sr.From.Id] = sr.Similary
+						srIdMap[sr.To.Id] = sr.Similary
+						tempToMap := model.SRSingleMap{}
+						tempToMap[sr.To] = sr.Similary
+						srMap[sr.From] = tempToMap
+					}
+				} else {
+					//eg. a-b-98，c-d-85，当出现a-c-86时，需要删除c-d-85，保留a-b-98
+					for k1 := range srMap {
+						for k2 := range srMap[k1] {
+							if k1.Id == sr.To.Id || k2.Id == sr.To.Id {
+								srMap[k1] = nil
+							}
+						}
+					}
 				}
 			} else {
-				srFromMap[sr.From] = sr.Similary
-				tempToMap := model.SRToMap{}
-				tempToMap[sr.To] = sr.Similary
-				srMap[sr.From] = tempToMap
-			}
-
-			if v, ok := srToMap[sr.To]; ok {
-				if sr.Similary > v {
-					srToMap[sr.To] = sr.Similary
-					tempToMap := model.SRToMap{}
-					tempToMap[sr.To] = sr.Similary
-					srMap[sr.From] = tempToMap
+				if v2, ok := srIdMap[sr.To.Id]; ok {
+					if sr.Similary >= v2 {
+						//eg. a-b-86，当出现d-b-87时，需要删除a-b-86，添加d-b-87
+						for k1 := range srMap {
+							for k2 := range srMap[k1] {
+								if k1.Id == sr.From.Id || k1.Id == sr.To.Id || k2.Id == sr.From.Id || k2.Id == sr.To.Id {
+									srMap[k1] = nil
+								}
+							}
+						}
+						srIdMap[sr.From.Id] = sr.Similary
+						srIdMap[sr.To.Id] = sr.Similary
+						tempToMap := model.SRSingleMap{}
+						tempToMap[sr.To] = sr.Similary
+						srMap[sr.From] = tempToMap
+					}
 				} else {
-					srToMap[sr.To] = sr.Similary
-					tempToMap := model.SRToMap{}
+					//eg. a-b-98，出现c-d-85时，添加c-d-84
+					srIdMap[sr.From.Id] = sr.Similary
+					srIdMap[sr.To.Id] = sr.Similary
+					tempToMap := model.SRSingleMap{}
 					tempToMap[sr.To] = sr.Similary
 					srMap[sr.From] = tempToMap
 				}

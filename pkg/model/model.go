@@ -33,10 +33,10 @@ type SRMatrix []SRList
 
 type LastSaveMap map[*PicSample]int64
 
-type SRFromMap map[*PicSample]int32
+type SRIdMap map[string]int32
 
-type SRToMap map[*PicSample]int32
+type SRSingleMap map[*PicSample]int32
 
-type SRMap map[*PicSample]map[*PicSample]int32
+type SRDoubleMap map[*PicSample]map[*PicSample]int32
 
 const CACHE_SUFFIX = "_cache"
