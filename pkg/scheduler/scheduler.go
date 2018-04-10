@@ -18,9 +18,14 @@ type Scheduler struct {
 
 func (s *Scheduler) CacheSchedulerAll(m *manager.Manager) {
 	//对所有的人脸集进行调度
-	for k, _ := range m.FacesetMap {
-		if k != "" {
-			s.cacheSchedulerUse1v1(k, m);
+	for k, v := range m.DetectCache {
+		if k != "" && len(v) > 0 {
+			s.scheduleDetectCacheUse1v1(k, m);
+		}
+	}
+	for k, v := range m.RegistCache {
+		if k != "" && len(v) > 0 {
+			s.scheduleRegisterCacheUse1v1(k, m);
 		}
 	}
 }
