@@ -73,7 +73,9 @@ func (scheduler *Scheduler) caculateSimilarityWithCache1v1(cacheList []model.Pic
 		list := model.SRList{}
 		for j := i - 1; j >= 0; j-- {
 			sr := caculateSimilarityWithOther(&cacheList[i], &cacheList[j], m)
-			list = append(list, sr)
+			if sr.Similary > int32(m.CustConfig.Similarity) {
+				list = append(list, sr)
+			}
 		}
 		matrix = append(matrix, list)
 	}

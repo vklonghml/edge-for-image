@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/golang/glog"
 	"io"
 	"net/http"
@@ -58,6 +59,7 @@ func (m *Manager) CaculateSimilarity(picSample *model.PicSample, imageBase64 str
 		imageurl := "http://" + m.CustConfig.PublicHost + ":" + m.CustConfig.Port + "/" + facesetname + "/" + picSample.Id
 		picSample.ImageAddress = imageaddress
 		picSample.ImageUrl = imageurl
+		picSample.Face = jdface
 		urlStr := m.CustConfig.Aiurl + "/v1/faceSet/" + m.FaceidMap[facesetname] + "/faceSearch?url=" + imageurl
 		// body := []byte(fmt.Sprintf("{\"imageUrl\": \"%s\"}", imageurl))
 		// resp, err := m.AiCloud.FakeFaceSearch(urlStr, http.MethodPost, body)
@@ -101,7 +103,7 @@ func (m *Manager) CaculateSimilarity(picSample *model.PicSample, imageBase64 str
 }
 
 //计算picsample与注册库中最相似的id
-func (m *Manager) CaculateMostSimilarity(sample *model.PicSample) {
+func (m *Manager) CaculateMostSimilarity(sample *model.PicSample, facesetname string) {
 	var curMostSimilarityValue int32 = 0
 	curMostSimilarityKey := ""
 	if len(sample.Similarity) > 0 {
@@ -111,6 +113,10 @@ func (m *Manager) CaculateMostSimilarity(sample *model.PicSample) {
 				curMostSimilarityValue = v
 			}
 		}
-		sample.MostSimilar = curMostSimilarityKey
+		sample.MostSimilar = curMostSimilarityValue
+		value, _ := strconv.ParseInt(curMostSimilarityKey, 10, 32)
+
+		sample.MostSimilarId = fmt.Sprintf("%d", value)
+		glog.Infof("CaculateMostSimilarity: faceid is %s.", sample.MostSimilarId)
 	}
 }

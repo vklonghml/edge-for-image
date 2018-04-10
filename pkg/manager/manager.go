@@ -263,21 +263,25 @@ func (m *Manager) searchFace(imageBase64, imagename, facesetname string) error {
 		Id:          imagename,
 		UploadTime:  time.Now().UnixNano() / 1e6,
 		Similarity:  make(map[string]int32),
-		MostSimilar: "",
+		MostSimilar: 0,
 		ImageBase64: imageBase64,
 	}
 
 	//调用人脸比对API计算相似度
 	m.CaculateSimilarity(picSample, imageBase64, facesetname)
-	m.CaculateMostSimilarity(picSample)
+	m.CaculateMostSimilarity(picSample, facesetname)
 
-	if len(picSample.Similarity) > 90 {
+	if picSample.MostSimilar > int32(m.CustConfig.Similarity) {
 		m.DetectCache[facesetname] = append(m.DetectCache[facesetname], *picSample)
 	} else {
 		m.RegistCache[facesetname] = append(m.RegistCache[facesetname], *picSample)
 	}
 
 	/** 之前的方法，先留在这做参考，后面可以删除掉这段代码
+
+
+
+
 	// search face in faceset
 	// /v1/faceSet/13345/faceSearch?url=http://100.114.203.102/data/2_8.png
 	if jdface != nil {
@@ -367,60 +371,60 @@ func (m *Manager) searchFace(imageBase64, imagename, facesetname string) error {
 	// glog.Infof("resp :%s", data)
 }
 
-//func (m *Manager) insertIntoKnow(largesimilar, imageaddress, imageurl string, face map[string]interface{}) error {
-//	// re := regexp.M
-//	faceidToS := face["faceID"].(string)
-//	index := 0
-//	for k := range faceidToS {
-//		if string(faceidToS[k]) != "0" {
-//			index = k
-//			break
-//		}
-//	}
-//	glog.Infof("index: %d, face:%s", index, faceidToS[index:len(faceidToS)])
-//	// rows, err := m.Mydb.Query(fmt.Sprintf("select * from facedb where faceid regexp '%s$'", face["faceID"]))
-//	rows, err := m.Mydb.Query("select * from facedb where faceid = ?", faceidToS[index:len(faceidToS)])
-//	if err != nil {
-//		glog.Errorf("Query db err: %s", err.Error())
-//		return err
-//	}
-//	defer rows.Close()
-//	var knowface FaceInfo
-//	// var faceinteface interface{}
-//	faceinteface := make([]byte, 255)
-//	var id int
-//	knowsfaces := make([]FaceInfo, 0)
-//	for rows.Next() {
-//		err := rows.Scan(&id, &knowface.FaceSetName, &knowface.FaceID, &faceinteface, &knowface.ImageBase64, &knowface.Name, &knowface.Age, &knowface.Address, &knowface.Imageaddress, &knowface.ImageURL, &knowface.CreateTime, &knowface.SimilaryImageURL, &knowface.Similarity)
-//		if err != nil {
-//			glog.Errorf("scan db err: %s", err.Error())
-//			return err
-//		}
-//		knowsfaces = append(knowsfaces, knowface)
-//	}
-//	if len(knowsfaces) == 1 {
-//		// insert know face
-//		glog.Infof("byte:%#v", faceinteface)
-//		// jsonface, err := json.Marshal(faceinteface)
-//		// if err != nil {
-//		// 	glog.Errorf("Marshal face err: %s", err.Error())
-//		// 	return err
-//		// }
-//		err = pkg.InsertIntoFacedb(m.Mydb, m.CustConfig.FaceSetName, strconv.Itoa(id), faceinteface, "", knowface.Name, knowface.Age, knowface.Address, imageaddress, imageurl, time.Now().UnixNano()/1e6, knowface.ImageURL, largesimilar, "knowfaceinfo")
-//		if err != nil {
-//			glog.Errorf("INSERT faceinfo err: %s", err)
-//			return err
-//		}
-//		glog.Infof("found similarity face: %s", face["similarity"])
-//	} else if len(knowsfaces) == 0 {
-//		glog.Errorf("facedb has no record of that faceid: %s", face["faceID"])
-//		return errors.New("facedb has no record of that faceid")
-//	} else {
-//		glog.Errorf("facedb has two many faces that match the faceid: %s", face["faceID"])
-//		return errors.New("facedb has two many faces that match the faceid")
-//	}
-//	return nil
-//}
+func (m *Manager) insertIntoKnow(largesimilar, imageaddress, imageurl string, faceid string, facesetname string) error {
+	// re := regexp.M
+	//faceidToS := face["faceID"].(string)
+	//index := 0
+	//for k := range faceidToS {
+	//	if string(faceidToS[k]) != "0" {
+	//		index = k
+	//		break
+	//	}
+	//}
+	//glog.Infof("index: %d, face:%s", index, faceidToS[index:len(faceidToS)])
+	// rows, err := m.Mydb.Query(fmt.Sprintf("select * from facedb where faceid regexp '%s$'", face["faceID"]))
+	rows, err := m.Mydb.Query("select * from facedb where faceid = ?", faceid)
+	if err != nil {
+		glog.Errorf("Query db err: %s", err.Error())
+		return err
+	}
+	defer rows.Close()
+	var knowface FaceInfo
+	// var faceinteface interface{}
+	faceinteface := make([]byte, 255)
+	var id int
+	knowsfaces := make([]FaceInfo, 0)
+	for rows.Next() {
+		err := rows.Scan(&id, &knowface.FaceSetName, &knowface.FaceID, &faceinteface, &knowface.ImageBase64, &knowface.Name, &knowface.Age, &knowface.Address, &knowface.Imageaddress, &knowface.ImageURL, &knowface.CreateTime, &knowface.SimilaryImageURL, &knowface.Similarity)
+		if err != nil {
+			glog.Errorf("scan db err: %s", err.Error())
+			return err
+		}
+		knowsfaces = append(knowsfaces, knowface)
+	}
+	if len(knowsfaces) == 1 {
+		// insert know face
+		glog.Infof("byte:%#v", faceinteface)
+		// jsonface, err := json.Marshal(faceinteface)
+		// if err != nil {
+		// 	glog.Errorf("Marshal face err: %s", err.Error())
+		// 	return err
+		// }
+		err = db.InsertIntoFacedb(m.Mydb, facesetname, strconv.Itoa(id), faceinteface, "", knowface.Name, knowface.Age, knowface.Address, imageaddress, imageurl, time.Now().UnixNano()/1e6, knowface.ImageURL, largesimilar, "knowfaceinfo")
+		if err != nil {
+			glog.Errorf("INSERT faceinfo err: %s", err)
+			return err
+		}
+		//glog.Infof("found similarity face: %s", face["similarity"])
+	} else if len(knowsfaces) == 0 {
+		//glog.Errorf("facedb has no record of that faceid: %s", face["faceID"])
+		return errors.New("facedb has no record of that faceid")
+	} else {
+		//glog.Errorf("facedb has two many faces that match the faceid: %s", face["faceID"])
+		return errors.New("facedb has two many faces that match the faceid")
+	}
+	return nil
+}
 
 // func (m *Manager) insertIntoFacedb(facesetname, imageaddress, imageurl, name, age, address string, face interface{}) {
 func (m *Manager) insertIntoFacedb(facesetname, imageaddress, imageurl, name, age, address string, face []byte) {
@@ -659,7 +663,7 @@ func (m *Manager) DeleteFaceset(facesetname string) {
 	m.AiCloud.DeleteFaceset(urlStr, http.MethodDelete, body)
 }
 
-func (m *Manager) FaceVerify(url1 string, url2 string) (faceVerifyResp *payload.FaceVerifyResponse) {
+func (m *Manager) FaceVerify(url1 string, url2 string) (resp payload.FaceVerifyResponse) {
 	urlStr := m.CustConfig.Aiurl + "/v1/faceVerify"
 	req := &payload.FaceVerifyRequest{
 		Image1URL: url1,
@@ -667,9 +671,15 @@ func (m *Manager) FaceVerify(url1 string, url2 string) (faceVerifyResp *payload.
 	}
 	//todo: here igored error.
 	body, _ := json.Marshal(req)
-	resp, _ := m.AiCloud.FaceVerify(urlStr, http.MethodPost, body)
+	data, _ := m.AiCloud.FaceVerify(urlStr, http.MethodPost, body)
+	json.Unmarshal(data, &resp)
+	return resp
+}
 
-	faceVerifyResp = &payload.FaceVerifyResponse{}
-	json.Unmarshal(resp, faceVerifyResp)
-	return faceVerifyResp
+func (m *Manager) AddFaceToSet(imageUrl string, facesetname string) (resp payload.AddFaceResponse) {
+	urlStr := m.CustConfig.Aiurl + "/v1/faceSet/" + m.FaceidMap[facesetname] + "/addFace"
+	body := []byte(fmt.Sprintf("{\"imageUrl\": \"%s\", \"externalImageID\": \"%s\"}", imageUrl, m.FaceidMap[facesetname]))
+	data, _ := m.AiCloud.AddFace(urlStr, http.MethodPut, body)
+	json.Unmarshal(data, &resp)
+	return resp
 }
