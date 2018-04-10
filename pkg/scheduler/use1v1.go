@@ -54,7 +54,7 @@ func (s *Scheduler) scheduleDetectCacheUse1v1(facesetname string, m *manager.Man
 
 //放入已识别库或者放回DetectCache（时间没到的话）
 func detectToDbOrBackToCache(pic *model.PicSample, m *manager.Manager, facesetname string) {
-	if isTimeOut(pic.UploadTime) { //if timeout, the detect
+	if isTimeOut(pic.UploadTime, m) { //if timeout, the detect
 		m.SaveToDetectDB(pic, facesetname)
 	} else { //if not timeout, then put back to DetectCache
 		m.DetectCache[facesetname] = append(m.DetectCache[facesetname], *pic)
@@ -63,7 +63,7 @@ func detectToDbOrBackToCache(pic *model.PicSample, m *manager.Manager, facesetna
 
 //注册或者放回RegisterCache（时间没到的话）
 func registerToDbOrBackToCache(pic *model.PicSample, m *manager.Manager, facesetname string) {
-	if isTimeOut(pic.UploadTime) { //if timeout, the register
+	if isTimeOut(pic.UploadTime, m) { //if timeout, the register
 		m.SaveToRegisterDB(pic, facesetname)
 	} else { //if not timeout, then put back to RegistCache
 		m.RegistCache[facesetname] = append(m.RegistCache[facesetname], *pic)

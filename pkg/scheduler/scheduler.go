@@ -16,13 +16,8 @@ import (
 type Scheduler struct {
 }
 
-func (s *Scheduler) CacheSchedulerAll(m *manager.Manager) {
+func (s *Scheduler) CacheSchedulerRegist(m *manager.Manager) {
 	//对所有的人脸集进行调度
-	for k, v := range m.DetectCache {
-		if k != "" && len(v) > 0 {
-			s.scheduleDetectCacheUse1v1(k, m);
-		}
-	}
 	for k, v := range m.RegistCache {
 		if k != "" && len(v) > 0 {
 			s.scheduleRegisterCacheUse1v1(k, m);
@@ -30,9 +25,18 @@ func (s *Scheduler) CacheSchedulerAll(m *manager.Manager) {
 	}
 }
 
+func (s *Scheduler) CacheSchedulerDetect(m *manager.Manager) {
+	//对所有的人脸集进行调度
+	for k, v := range m.DetectCache {
+		if k != "" && len(v) > 0 {
+			s.scheduleDetectCacheUse1v1(k, m);
+		}
+	}
+}
+
 //如果超时图片，则自动注册
-func isTimeOut(t int64) bool {
-	return time.Now().UnixNano()/1e6-t > model.PIC_TIME_OUT_SEC
+func isTimeOut(t int64, m *manager.Manager) bool {
+	return time.Now().UnixNano()/1e6-t > m.CustConfig.PicWaitSec
 }
 
 //按id从list中找到该对象

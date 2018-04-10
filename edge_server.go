@@ -7,6 +7,7 @@ import (
 	"edge-for-image/pkg/manager"
 	"edge-for-image/pkg/model"
 	"edge-for-image/pkg/scheduler"
+	"fmt"
 	"github.com/golang/glog"
 	"github.com/robfig/cron"
 	"net/http"
@@ -22,10 +23,13 @@ func main() {
 
 	//定时调度
 	cron := cron.New()
-	spec := "*/20 * * * * ?"
-	cron.AddFunc(spec, func() {
-
-		s.CacheSchedulerAll(m)
+	registSpec := fmt.Sprintf("*/%d * * * * ?", m.CustConfig.RegistPeriodSec)
+	detectSpec := fmt.Sprintf("*/%d * * * * ?", m.CustConfig.DetectPeriodSec)
+	cron.AddFunc(registSpec, func() {
+		s.CacheSchedulerRegist(m)
+	})
+	cron.AddFunc(detectSpec, func() {
+		s.CacheSchedulerDetect(m)
 	})
 	cron.Start()
 	//
@@ -60,13 +64,13 @@ func NewManager(config *pkg.Config) *manager.Manager {
 	aicloud := accessai.NewAccessai()
 	facesetmap := make(map[string]string)
 	m := &manager.Manager{
-		CustConfig:   config,
-		AiCloud:      aicloud,
-		Mydb:         checkFacesetExist(config, aicloud, facesetmap),
-		FaceidMap:    facesetmap,
-		RegistCache:  make(map[string][]model.PicSample),
-		DetectCache:  make(map[string][]model.PicSample),
-		FacesetMap:   make(map[string]int64),
+		CustConfig:  config,
+		AiCloud:     aicloud,
+		Mydb:        checkFacesetExist(config, aicloud, facesetmap),
+		FaceidMap:   facesetmap,
+		RegistCache: make(map[string][]model.PicSample),
+		DetectCache: make(map[string][]model.PicSample),
+		FacesetMap:  make(map[string]int64),
 	}
 	glog.Infof("facemap:%#v", m.FaceidMap)
 	return m

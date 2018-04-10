@@ -11,9 +11,12 @@ type Config struct {
 	StaticDir  string
 	Aiurl      string
 	//FaceSetName      string
-	DBConnStr     string
-	Diskthreshold int
-	Similarity    int
+	DBConnStr       string
+	Diskthreshold   int
+	Similarity      int
+	PicWaitSec      int64
+	RegistPeriodSec int
+	DetectPeriodSec int
 }
 
 func InitConfig() *Config {
@@ -27,6 +30,10 @@ func InitConfig() *Config {
 	flag.StringVar(&config.DBConnStr, "db-conn-str", "", "db connection string (user:password@tcp(ip:port)/dbname)")
 	flag.IntVar(&config.Diskthreshold, "disk-threshod", 80, "images data store in disk to trigger to rm images")
 	flag.IntVar(&config.Similarity, "similarity", 92, "similarity to judge two image are similar")
+
+	flag.Int64Var(&config.PicWaitSec, "pic-wait-sec", 30, "the second for a pic to be detected or registered")
+	flag.IntVar(&config.RegistPeriodSec, "regist-period-sec", 20, "register cache scheduler period")
+	flag.IntVar(&config.DetectPeriodSec, "detect-period-sec", 20, "detector cache scheduler period")
 
 	flag.Parse()
 	return &config

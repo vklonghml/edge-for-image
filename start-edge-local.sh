@@ -8,4 +8,7 @@
 --port=9090 \
 --disk-threshod=80 \
 --similarity=92 \
+--pic-wait-sec=20 \
+--regist-period-sec=10 \
+--detect-period-sec=10 \
 --aiurl=http://127.0.0.1:8086 >> edge-for-image.log 2>&1 &
