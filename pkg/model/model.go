@@ -32,8 +32,6 @@ type SRList []SimilaryRelation
 
 type SRMatrix []SRList
 
-type LastSaveMap map[*PicSample]int64
-
 type SRIdMap map[string]int32
 
 type SRSingleMap map[*PicSample]int32

@@ -70,7 +70,9 @@ func NewManager(config *pkg.Config) *manager.Manager {
 		FaceidMap:   facesetmap,
 		RegistCache: make(map[string][]model.PicSample),
 		DetectCache: make(map[string][]model.PicSample),
-		FacesetMap:  make(map[string]int64),
+		LastSaveMap: make(map[string]int64),
+		CloseToRegist: make(map[string]bool),
+		RingBuffer: model.MakeQueen(5),
 	}
 	glog.Infof("facemap:%#v", m.FaceidMap)
 	return m

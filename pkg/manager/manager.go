@@ -55,7 +55,9 @@ type Manager struct {
 	UploadPortal map[string]model.Caches //to delete
 	DetectCache  map[string][]model.PicSample
 	RegistCache  map[string][]model.PicSample
-	FacesetMap   map[string]int64
+	LastSaveMap  map[string]int64
+	CloseToRegist map[string]bool
+	RingBuffer model.Queen
 }
 
 type BoundingBox struct {
@@ -239,7 +241,6 @@ func (m *Manager) searchFace(imageBase64, imagename, facesetname string) error {
 	if err := m.CreateFacesetIfNotExist(facesetname); err != nil {
 		return err
 	}
-	m.FacesetMap[facesetname] = time.Now().UnixNano() / 1e6
 
 	// imageBase64 := base64.StdEncoding.EncodeToString(buf.Bytes())
 	// imageBase64 = ""
@@ -269,7 +270,7 @@ func (m *Manager) searchFace(imageBase64, imagename, facesetname string) error {
 
 	//调用人脸比对API计算相似度
 	m.CaculateSimilarity(picSample, imageBase64, facesetname)
-	m.CaculateMostSimilarity(picSample, facesetname)
+	m.CaculateMostSimilarity(picSample)
 
 	if picSample.MostSimilar > int32(m.CustConfig.Similarity) {
 		m.DetectCache[facesetname] = append(m.DetectCache[facesetname], *picSample)
@@ -652,6 +653,20 @@ func (m *Manager) updateface(face map[string]interface{}) error {
 		}
 	}
 	return nil
+}
+
+func (m *Manager) countFacedb(facesetname string) (int, error) {
+	count := 0
+	rows, err := m.Mydb.Query("select id from facedb where facesetname=?", facesetname)
+	if err != nil {
+		return 0, err
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		count = count + 1
+	}
+	return count, nil
 }
 
 func (m *Manager) timeToRemoveImages() {

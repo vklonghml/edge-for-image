@@ -103,7 +103,7 @@ func (m *Manager) CaculateSimilarity(picSample *model.PicSample, imageBase64 str
 }
 
 //计算picsample与注册库中最相似的id
-func (m *Manager) CaculateMostSimilarity(sample *model.PicSample, facesetname string) {
+func (m *Manager) CaculateMostSimilarity(sample *model.PicSample) {
 	var curMostSimilarityValue int32 = 0
 	curMostSimilarityKey := ""
 	if len(sample.Similarity) > 0 {

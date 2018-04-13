@@ -64,7 +64,6 @@ func (s *Scheduler) cacheScheduler(facesetname string, m *manager.Manager) {
 		s.addCacheFaceSet(tempDetectCache, facesetname, m)
 
 		srMetrix := model.SRMatrix{}
-		lastSaveMap := make(model.LastSaveMap) //全局？
 
 		for _, picSample := range tempDetectCache {
 			similaryRelations := s.caculateSimilarityWithCache(&picSample, tempDetectCache, picSample.ImageBase64, facesetname+model.CACHE_SUFFIX, m)
@@ -80,10 +79,10 @@ func (s *Scheduler) cacheScheduler(facesetname string, m *manager.Manager) {
 				fromPic := mostSimiliarityRelations[i].From
 				toPic := mostSimiliarityRelations[i].To
 
-				if fromPic.UploadTime-lastSaveMap[toPic] > 30*1000 {
+				if fromPic.UploadTime-m.LastSaveMap[toPic.MostSimilarId] > 30*1000 {
 					m.SaveToDetectDB(fromPic, facesetname)
 
-					lastSaveMap[toPic] = fromPic.UploadTime
+					m.LastSaveMap[toPic.MostSimilarId] = fromPic.UploadTime
 				} else {
 					tempDetectCache = append(tempDetectCache, *fromPic)
 				}

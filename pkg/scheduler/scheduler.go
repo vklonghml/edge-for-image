@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 )
 
 type Scheduler struct {
@@ -35,8 +34,8 @@ func (s *Scheduler) CacheSchedulerDetect(m *manager.Manager) {
 }
 
 //如果超时图片，则自动注册
-func isTimeOut(t int64, m *manager.Manager) bool {
-	return time.Now().UnixNano()/1e6-t > m.CustConfig.PicWaitSec
+func isTimeOut(pic *model.PicSample, m *manager.Manager) bool {
+	return pic.UploadTime - m.LastSaveMap[pic.MostSimilarId] > m.CustConfig.PicWaitSec * 1000
 }
 
 //按id从list中找到该对象
