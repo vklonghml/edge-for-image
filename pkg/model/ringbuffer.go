@@ -1,6 +1,9 @@
 package model
 
-import "log"
+import (
+	"log"
+	"github.com/golang/glog"
+)
 
 type Queen struct {
 	Length   int64
@@ -28,7 +31,8 @@ func (t *Queen) Append(element interface{}) bool {
 		log.Println("queen is full.")
 		return false
 	}
-	t.Data[t.Tail] = element
+	glog.Infof("Tail is %d\n", t.Tail)
+	t.Data[t.Tail%t.Length] = element
 	t.Tail++
 	t.Capacity++
 	return true
@@ -42,7 +46,8 @@ func (t *Queen) OutElement() interface{} {
 		t.Capacity--
 		t.Head++
 	}()
-	return t.Data[t.Head]
+	glog.Infof("Head is %d\n", t.Head)
+	return t.Data[t.Head%t.Length]
 }
 
 func (t *Queen) Each(fn func(node interface{})) {

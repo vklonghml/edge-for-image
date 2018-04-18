@@ -57,7 +57,7 @@ type Manager struct {
 	RegistCache   map[string][]model.PicSample
 	LastSaveMap   map[string]int64
 	CloseToRegist map[string]bool
-	RingBuffer    *model.Queen
+	RingBuffer    map[string]*model.Queen
 	RegistThread  map[string]int32
 	DetectThread  map[string]int32
 }

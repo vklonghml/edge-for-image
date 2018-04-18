@@ -15,7 +15,6 @@ import (
 type Scheduler struct {
 }
 
-
 //如果超时图片，则自动注册
 func isTimeOut(pic *model.PicSample, m *manager.Manager) bool {
 	return pic.UploadTime-m.LastSaveMap[pic.MostSimilarId] > m.CustConfig.PicWaitSec*1000

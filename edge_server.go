@@ -53,7 +53,6 @@ func main() {
 	//go m.timeToRemoveImages()
 	glog.Error(http.ListenAndServe(":"+config.Port, nil))
 
-
 }
 
 func NewManager(config *pkg.Config) *manager.Manager {
@@ -76,7 +75,7 @@ func NewManager(config *pkg.Config) *manager.Manager {
 		DetectThread:  make(map[string]int32),
 		LastSaveMap:   make(map[string]int64),
 		CloseToRegist: make(map[string]bool),
-		RingBuffer:    model.MakeQueen(5),
+		RingBuffer:    make(map[string]*model.Queen),
 	}
 	glog.Infof("facemap:%#v", m.FaceidMap)
 	return m
@@ -170,13 +169,14 @@ func checkFacesetExist(config *pkg.Config, aicloud *accessai.Accessai, facesetma
 	return db
 }
 
-func newLoop(m *manager.Manager, s scheduler.Scheduler)  {
+func newLoop(m *manager.Manager, s scheduler.Scheduler) {
 	for {
 		//glog.Infof("starting go routine")
 		for k, v := range m.RegistThread {
 			if v == 1 {
 				go s.LoopHandleRegistCache(m, k)
 				m.RegistThread[k] = 2
+				m.RingBuffer[k] = model.MakeQueen(5)
 				glog.Infof("start a new regist thread for faceset: %s.", k)
 			}
 		}

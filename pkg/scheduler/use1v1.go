@@ -115,17 +115,19 @@ func registerToDb(pic *model.PicSample, m *manager.Manager, facesetname string) 
 		return
 	}
 
-	if !m.RingBuffer.IsEmpty() {
-		m.RingBuffer.Each(func(node interface{}) {
-			sr, err := caculateSimilarityWithOther(node.(*model.PicSample), pic, m)
+	if !m.RingBuffer[facesetname].IsEmpty() {
+		glog.Infof("ringbuffer cap is %d, length is %d.", m.RingBuffer[facesetname].Capacity, m.RingBuffer[facesetname].Length)
+		for _, e := range m.RingBuffer[facesetname].Data {
+			sr, err := caculateSimilarityWithOther(e.(*model.PicSample), pic, m)
 			if err != nil {
 				glog.Error("caculate ringbuffer similary failed.")
 				return
 			}
 			if sr.Similary > int32(m.CustConfig.Similarity) {
-				glog.Error("pic has been registed.")
+				glog.Infof("%s has been registed, here not save to DB, return.", pic.Id)
+				return
 			}
-		})
+		}
 	}
 
 	m.CaculateSimilarity(pic, pic.ImageBase64, facesetname)
@@ -143,8 +145,8 @@ func unknowToDb(pic *model.PicSample, m *manager.Manager, facesetname string) {
 		return
 	}
 
-	if !m.RingBuffer.IsEmpty() {
-		m.RingBuffer.Each(func(node interface{}) {
+	if !m.RingBuffer[facesetname].IsEmpty() {
+		m.RingBuffer[facesetname].Each(func(node interface{}) {
 			sr, err := caculateSimilarityWithOther(node.(*model.PicSample), pic, m)
 			if err != nil {
 				glog.Error("caculate ringbuffer similary failed.")

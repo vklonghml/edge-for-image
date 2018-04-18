@@ -14,7 +14,6 @@ func (m *Manager) SaveToRegisterDB(picSample *model.PicSample, facesetName strin
 		return nil
 	}
 
-
 	glog.Infof("SaveToRegisterDB: picSampleUrl is %s.", picSample.ImageUrl)
 	resp := m.AddFaceToSet(picSample.ImageUrl, facesetName)
 	err := db.InsertIntoFacedb(m.Mydb, facesetName, resp.FaceID, nil, "", resp.FaceID, "", "", picSample.ImageAddress, picSample.ImageUrl, picSample.UploadTime, "", "", "facedb")
@@ -22,11 +21,11 @@ func (m *Manager) SaveToRegisterDB(picSample *model.PicSample, facesetName strin
 		glog.Errorf("Prepare INSERT faceinfo err: %s", err.Error())
 	}
 
-	if m.RingBuffer.IsFull() {
-		m.RingBuffer.OutElement()
-		m.RingBuffer.Append(picSample)
+	if m.RingBuffer[facesetName].IsFull() {
+		m.RingBuffer[facesetName].OutElement()
+		m.RingBuffer[facesetName].Append(picSample)
 	} else {
-		m.RingBuffer.Append(picSample)
+		m.RingBuffer[facesetName].Append(picSample)
 	}
 
 	return err
@@ -46,11 +45,11 @@ func (m *Manager) SaveToUnknowDB(picSample *model.PicSample, facesetName string)
 		glog.Errorf("Prepare INSERT unknowfaceinfo err: %s", err.Error())
 	}
 
-	if m.RingBuffer.IsFull() {
-		m.RingBuffer.OutElement()
-		m.RingBuffer.Append(picSample)
+	if m.RingBuffer[facesetName].IsFull() {
+		m.RingBuffer[facesetName].OutElement()
+		m.RingBuffer[facesetName].Append(picSample)
 	} else {
-		m.RingBuffer.Append(picSample)
+		m.RingBuffer[facesetName].Append(picSample)
 	}
 
 	return err
