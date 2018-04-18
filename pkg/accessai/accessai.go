@@ -60,12 +60,13 @@ func (ai *Accessai) FakeFaceSearch(urlStr, httpMethod string, body []byte) ([]by
 func (ai *Accessai) FaceSearch(urlStr, httpMethod string, body []byte) ([]byte, error) {
 	glog.Infof("FaceSearch: url is: %s, body is: %s", urlStr, body)
 	resp, err := access(urlStr, nil, body, len(body), httpMethod, ai.HTTPClient)
+	glog.Infof("FaceSearch: return body is: %s, ", string(resp))
 	return resp, err
 }
 
 // FaceDetect create face set
 func (ai *Accessai) FaceDetect(urlStr, httpMethod string, body []byte) ([]byte, error) {
-	glog.Infof("FaceDetect: url is: %s", urlStr)
+	//glog.Infof("FaceDetect: url is: %s", urlStr)
 	resp, err := access(urlStr, nil, body, len(body), httpMethod, ai.HTTPClient)
 	return resp, err
 }
@@ -74,6 +75,7 @@ func (ai *Accessai) FaceDetect(urlStr, httpMethod string, body []byte) ([]byte, 
 func (ai *Accessai) CreateFaceset(urlStr, httpMethod string, body []byte) ([]byte, error) {
 	glog.Infof("CreateFaceset: url is: %s, body is %s.", urlStr, body)
 	resp, err := access(urlStr, nil, body, len(body), httpMethod, ai.HTTPClient)
+	glog.Infof("CreateFaceset: return body is: %s, ", string(resp))
 	return resp, err
 }
 
@@ -81,6 +83,7 @@ func (ai *Accessai) CreateFaceset(urlStr, httpMethod string, body []byte) ([]byt
 func (ai *Accessai) DeleteFaceset(urlStr, httpMethod string, body []byte) ([]byte, error) {
 	glog.Infof("DeleteFaceset: url is: %s, body is: %s", urlStr, body)
 	resp, err := access(urlStr, nil, body, len(body), httpMethod, ai.HTTPClient)
+	glog.Infof("DeleteFaceset: return body is: %s, ", string(resp))
 	return resp, err
 }
 
@@ -88,6 +91,7 @@ func (ai *Accessai) DeleteFaceset(urlStr, httpMethod string, body []byte) ([]byt
 func (ai *Accessai) AddFace(urlStr, httpMethod string, body []byte) ([]byte, error) {
 	glog.Infof("AddFace: url is: %s, body is %s", urlStr, body)
 	resp, err := access(urlStr, nil, body, len(body), httpMethod, ai.HTTPClient)
+	glog.Infof("AddFace: return body is: %s, ", string(resp))
 	return resp, err
 }
 
@@ -95,6 +99,7 @@ func (ai *Accessai) AddFace(urlStr, httpMethod string, body []byte) ([]byte, err
 func (ai *Accessai) GetFace(urlStr, httpMethod string, ) ([]byte, error) {
 	glog.Infof("GetFace: url is: %s", urlStr)
 	resp, err := access(urlStr, nil, []byte(""), 0, httpMethod, ai.HTTPClient)
+	glog.Infof("GetFace: return body is: %s, ", string(resp))
 	return resp, err
 }
 
@@ -102,12 +107,14 @@ func (ai *Accessai) GetFace(urlStr, httpMethod string, ) ([]byte, error) {
 func (ai *Accessai) DeleteFace(urlStr, httpMethod string, ) ([]byte, error) {
 	glog.Infof("DeleteFace: url is: %s", urlStr)
 	resp, err := access(urlStr, nil, []byte(""), 0, httpMethod, ai.HTTPClient)
+	glog.Infof("DeleteFace: return body is: %s, ", string(resp))
 	return resp, err
 }
 
 func (ai *Accessai) FaceVerify(urlStr, httpMethod string, body []byte) ([]byte, error) {
 	glog.Infof("FaceVerify: url is: %s, body is %s.", urlStr, body)
 	resp, err := access(urlStr, nil, body, len(body), httpMethod, ai.HTTPClient)
+	glog.Infof("FaceVerify: return body is: %s, ", string(resp))
 	return resp, err
 }
 
@@ -135,7 +142,7 @@ func access(URL string, headers map[string]string, content []byte, contentLength
 	defer resp.Body.Close()
 
 	bodyBytes, _ := ioutil.ReadAll(resp.Body)
-	bodyString := string(bodyBytes)
-	glog.Infof("response from ai: %s, return code:%s", bodyString, string(resp.StatusCode))
+	//bodyString := string(bodyBytes)
+	//glog.Infof("response from ai: %s, return code:%s", bodyString, string(resp.StatusCode))
 	return bodyBytes, err
 }
