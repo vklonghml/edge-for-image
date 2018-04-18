@@ -35,7 +35,8 @@ func (m *Manager) CaculateSimilarity(picSample *model.PicSample, imageBase64 str
 		glog.Error(err)
 		return err
 	}
-	glog.Infof("dface: %#v", jdface)
+	//这个日志不可读，打印出来没意义。
+	//glog.Infof("dface: %#v", jdface)
 
 	// search face in faceset
 	// /v1/faceSet/13345/faceSearch?url=http://100.114.203.102/data/2_8.png

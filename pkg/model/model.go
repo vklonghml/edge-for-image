@@ -39,5 +39,3 @@ type SRSingleMap map[*PicSample]int32
 type SRDoubleMap map[*PicSample]map[*PicSample]int32
 
 const CACHE_SUFFIX = "_cache"
-
-const PIC_TIME_OUT_SEC = 10

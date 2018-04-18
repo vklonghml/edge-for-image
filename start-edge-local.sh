@@ -9,9 +9,9 @@
 --disk-threshod=80 \
 --similarity=92 \
 --pic-wait-sec=20 \
---regist-period-sec=4 \
---detect-period-sec=10 \
---regist-cache-size=1 \
---detect-cache-size=10 \
+--regist-period-sec=10 \
+--detect-period-sec=5 \
+--regist-cache-size=5 \
+--detect-cache-size=5 \
 --auto-regist-size=100 \
 --aiurl=http://127.0.0.1:8086 >> edge-for-image.log 2>&1 &

@@ -7,13 +7,12 @@ import (
 	"edge-for-image/pkg/manager"
 	"edge-for-image/pkg/model"
 	"edge-for-image/pkg/scheduler"
-	"fmt"
 	"github.com/golang/glog"
-	"github.com/robfig/cron"
 	"net/http"
 	"os"
 
 	_ "github.com/go-sql-driver/mysql"
+	"time"
 )
 
 func main() {
@@ -22,17 +21,18 @@ func main() {
 	s := scheduler.Scheduler{}
 
 	//定时调度
-	cron := cron.New()
-	registSpec := fmt.Sprintf("*/%d * * * * ?", m.CustConfig.RegistPeriodSec)
-	detectSpec := fmt.Sprintf("*/%d * * * * ?", m.CustConfig.DetectPeriodSec)
-	cron.AddFunc(registSpec, func() {
-		s.CacheSchedulerRegist(m)
-	})
-	cron.AddFunc(detectSpec, func() {
-		s.CacheSchedulerDetect(m)
-	})
-	cron.Start()
+	//cron := cron.New()
+	//registSpec := fmt.Sprintf("*/%d * * * * ?", m.CustConfig.RegistPeriodSec)
+	//detectSpec := fmt.Sprintf("*/%d * * * * ?", m.CustConfig.DetectPeriodSec)
+	//cron.AddFunc(registSpec, func() {
+	//	s.CacheSchedulerRegist(m)
+	//})
+	//cron.AddFunc(detectSpec, func() {
+	//	s.CacheSchedulerDetect(m)
+	//})
+	//cron.Start()
 	//
+	go newLoop(m, s)
 
 	fs := http.FileServer(http.Dir(config.StaticDir))
 	http.Handle("/", fs)
@@ -52,6 +52,8 @@ func main() {
 	glog.Infof("Serving %s on HTTP port: %s\n", config.StaticDir, config.Port)
 	//go m.timeToRemoveImages()
 	glog.Error(http.ListenAndServe(":"+config.Port, nil))
+
+
 }
 
 func NewManager(config *pkg.Config) *manager.Manager {
@@ -64,15 +66,17 @@ func NewManager(config *pkg.Config) *manager.Manager {
 	aicloud := accessai.NewAccessai()
 	facesetmap := make(map[string]string)
 	m := &manager.Manager{
-		CustConfig:  config,
-		AiCloud:     aicloud,
-		Mydb:        checkFacesetExist(config, aicloud, facesetmap),
-		FaceidMap:   facesetmap,
-		RegistCache: make(map[string][]model.PicSample),
-		DetectCache: make(map[string][]model.PicSample),
-		LastSaveMap: make(map[string]int64),
+		CustConfig:    config,
+		AiCloud:       aicloud,
+		Mydb:          checkFacesetExist(config, aicloud, facesetmap),
+		FaceidMap:     facesetmap,
+		RegistCache:   make(map[string][]model.PicSample),
+		DetectCache:   make(map[string][]model.PicSample),
+		RegistThread:  make(map[string]int32),
+		DetectThread:  make(map[string]int32),
+		LastSaveMap:   make(map[string]int64),
 		CloseToRegist: make(map[string]bool),
-		RingBuffer: model.MakeQueen(5),
+		RingBuffer:    model.MakeQueen(5),
 	}
 	glog.Infof("facemap:%#v", m.FaceidMap)
 	return m
@@ -164,4 +168,25 @@ func checkFacesetExist(config *pkg.Config, aicloud *accessai.Accessai, facesetma
 	glog.Infof("faceset map: %#v", facesetmap)
 
 	return db
+}
+
+func newLoop(m *manager.Manager, s scheduler.Scheduler)  {
+	for {
+		//glog.Infof("starting go routine")
+		for k, v := range m.RegistThread {
+			if v == 1 {
+				go s.LoopHandleRegistCache(m, k)
+				m.RegistThread[k] = 2
+				glog.Infof("start a new regist thread for faceset: %s.", k)
+			}
+		}
+		for k, v := range m.DetectThread {
+			if v == 1 {
+				go s.LoopHandleDetectCache(m, k)
+				m.DetectThread[k] = 2
+				glog.Infof("start a new detect thread for faceset: %s.", k)
+			}
+		}
+		time.Sleep(2 * time.Second)
+	}
 }

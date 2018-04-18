@@ -14,6 +14,7 @@ func (m *Manager) SaveToRegisterDB(picSample *model.PicSample, facesetName strin
 		return nil
 	}
 
+
 	glog.Infof("SaveToRegisterDB: picSampleUrl is %s.", picSample.ImageUrl)
 	resp := m.AddFaceToSet(picSample.ImageUrl, facesetName)
 	err := db.InsertIntoFacedb(m.Mydb, facesetName, resp.FaceID, nil, "", resp.FaceID, "", "", picSample.ImageAddress, picSample.ImageUrl, picSample.UploadTime, "", "", "facedb")

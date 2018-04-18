@@ -57,7 +57,9 @@ type Manager struct {
 	RegistCache   map[string][]model.PicSample
 	LastSaveMap   map[string]int64
 	CloseToRegist map[string]bool
-	RingBuffer    model.Queen
+	RingBuffer    *model.Queen
+	RegistThread  map[string]int32
+	DetectThread  map[string]int32
 }
 
 type BoundingBox struct {
@@ -183,10 +185,10 @@ func (m *Manager) CreateFacesetIfNotExist(facesetname string) error {
 	// rows, err := db.Query("select * from faceset where facesetname = ?", config.FaceSetName)
 	for key := range m.FaceidMap {
 		if key == facesetname {
-			glog.Infof("faceset %s is already exist!", facesetname)
 			return nil
 		}
 	}
+	glog.Infof("faceset %s is not exist, now creating faceset", facesetname)
 
 	urlStr := m.CustConfig.Aiurl + "/v1/faceSet"
 	body := []byte(fmt.Sprintf("{\"faceSetName\":\"%s\"}", facesetname))
@@ -217,7 +219,7 @@ func (m *Manager) CreateFacesetIfNotExist(facesetname string) error {
 		return err
 	}
 	defer stmt.Close()
-	glog.Infof("config faceset name=%s", facesetname)
+	//glog.Infof("config faceset name=%s", facesetname)
 	_, err = stmt.Exec(facesetname, bdata["faceSetID"].(string), time.Now().UnixNano()/1e6)
 	if err != nil {
 		glog.Errorf("INSERT faceinfo err: %s", err.Error())
@@ -240,6 +242,13 @@ func (m *Manager) CreateFacesetIfNotExist(facesetname string) error {
 func (m *Manager) searchFace(imageBase64, imagename, facesetname string) error {
 	if err := m.CreateFacesetIfNotExist(facesetname); err != nil {
 		return err
+	}
+
+	if m.RegistThread[facesetname] == 0 {
+		m.RegistThread[facesetname] = 1
+	}
+	if m.DetectThread[facesetname] == 0 {
+		m.DetectThread[facesetname] = 1
 	}
 
 	// imageBase64 := base64.StdEncoding.EncodeToString(buf.Bytes())

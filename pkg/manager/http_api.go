@@ -67,7 +67,6 @@ func (m *Manager) Faceset(w http.ResponseWriter, r *http.Request) {
 
 // upload logic
 func (m *Manager) Upload(w http.ResponseWriter, r *http.Request) {
-	glog.Infof("method: %s", r.Method)
 	if r.Method == "GET" {
 		crutime := time.Now().Unix()
 		h := md5.New()

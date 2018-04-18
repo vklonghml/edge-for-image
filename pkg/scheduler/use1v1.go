@@ -9,7 +9,7 @@ import (
 	"errors"
 )
 
-func (s *Scheduler) scheduleRegisterCacheUse1v1(facesetname string, m *manager.Manager) {
+func (s *Scheduler) ScheduleRegisterCacheUse1v1(facesetname string, m *manager.Manager) {
 	//分两个任务调度
 	var lock sync.RWMutex
 
@@ -67,7 +67,7 @@ func (s *Scheduler) scheduleRegisterCacheUse1v1(facesetname string, m *manager.M
 	}
 }
 
-func (s *Scheduler) scheduleDetectCacheUse1v1(facesetname string, m *manager.Manager) {
+func (s *Scheduler) ScheduleDetectCacheUse1v1(facesetname string, m *manager.Manager) {
 	var lock sync.RWMutex
 	//2.识别缓存
 	lock.Lock()

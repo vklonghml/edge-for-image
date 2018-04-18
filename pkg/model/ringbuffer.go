@@ -10,8 +10,8 @@ type Queen struct {
 	Data     []interface{}
 }
 
-func MakeQueen(length int64) Queen {
-	var q = Queen{Length: length, Data: make([]interface{}, length),}
+func MakeQueen(length int64) *Queen {
+	var q = &Queen{Length: length, Data: make([]interface{}, length),}
 	return q
 }
 
