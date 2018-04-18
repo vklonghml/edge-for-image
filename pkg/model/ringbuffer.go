@@ -46,7 +46,7 @@ func (t *Queen) OutElement() interface{} {
 }
 
 func (t *Queen) Each(fn func(node interface{})) {
-	for i := t.Head; i < t.Head + t.Capacity; i++ {
+	for i := t.Head; i < t.Head+t.Capacity; i++ {
 		fn(t.Data[i%t.Length])
 	}
 }

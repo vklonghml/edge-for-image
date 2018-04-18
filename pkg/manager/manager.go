@@ -48,16 +48,16 @@ import (
 // }
 
 type Manager struct {
-	CustConfig   *pkg.Config
-	AiCloud      *accessai.Accessai
-	Mydb         *sql.DB
-	FaceidMap    map[string]string
-	UploadPortal map[string]model.Caches //to delete
-	DetectCache  map[string][]model.PicSample
-	RegistCache  map[string][]model.PicSample
-	LastSaveMap  map[string]int64
+	CustConfig    *pkg.Config
+	AiCloud       *accessai.Accessai
+	Mydb          *sql.DB
+	FaceidMap     map[string]string
+	UploadPortal  map[string]model.Caches //to delete
+	DetectCache   map[string][]model.PicSample
+	RegistCache   map[string][]model.PicSample
+	LastSaveMap   map[string]int64
 	CloseToRegist map[string]bool
-	RingBuffer model.Queen
+	RingBuffer    model.Queen
 }
 
 type BoundingBox struct {

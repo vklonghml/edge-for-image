@@ -19,7 +19,7 @@ type Config struct {
 	DetectPeriodSec int
 	RegistCacheSize int
 	DetectCacheSize int
-	AutoRegistSize int
+	AutoRegistSize  int
 }
 
 func InitConfig() *Config {
@@ -40,7 +40,7 @@ func InitConfig() *Config {
 
 	flag.IntVar(&config.RegistCacheSize, "regist-cache-size", 20, "max regist cache size")
 	flag.IntVar(&config.DetectCacheSize, "detect-cache-size", 20, "max detect cache size")
-	flag.IntVar(&config.AutoRegistSize,  "auto-regist-size", 100, "auto regist size")
+	flag.IntVar(&config.AutoRegistSize, "auto-regist-size", 100, "auto regist size")
 
 	flag.Parse()
 	return &config

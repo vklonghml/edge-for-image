@@ -116,7 +116,7 @@ func registerToDb(pic *model.PicSample, m *manager.Manager, facesetname string) 
 	}
 
 	if !m.RingBuffer.IsEmpty() {
-		m.RingBuffer.Each(func(node interface{}){
+		m.RingBuffer.Each(func(node interface{}) {
 			sr, err := caculateSimilarityWithOther(node.(*model.PicSample), pic, m)
 			if err != nil {
 				glog.Error("caculate ringbuffer similary failed.")
@@ -144,7 +144,7 @@ func unknowToDb(pic *model.PicSample, m *manager.Manager, facesetname string) {
 	}
 
 	if !m.RingBuffer.IsEmpty() {
-		m.RingBuffer.Each(func(node interface{}){
+		m.RingBuffer.Each(func(node interface{}) {
 			sr, err := caculateSimilarityWithOther(node.(*model.PicSample), pic, m)
 			if err != nil {
 				glog.Error("caculate ringbuffer similary failed.")
@@ -177,7 +177,7 @@ func (scheduler *Scheduler) caculateSimilarityWithCache1v1(cacheList []model.Pic
 	for i := l - 1; i > 0; i-- {
 		list := model.SRList{}
 		for j := i - 1; j >= 0; j-- {
-			sr,err := caculateSimilarityWithOther(&cacheList[i], &cacheList[j], m)
+			sr, err := caculateSimilarityWithOther(&cacheList[i], &cacheList[j], m)
 			if err != nil {
 				continue
 			}
@@ -197,7 +197,7 @@ func (scheduler *Scheduler) caculateSimilarityWithCache1v1(cacheList []model.Pic
 		resultMatrix = append(resultMatrix, list)
 	}
 
-	for k,v := range isolutedMap {
+	for k, v := range isolutedMap {
 		if k.ImageUrl != "" && v < int32(m.CustConfig.Similarity) {
 			resultIsolutes = append(resultIsolutes, *k)
 		}
