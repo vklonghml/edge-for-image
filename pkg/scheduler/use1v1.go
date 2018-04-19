@@ -120,8 +120,8 @@ func registerToDb(pic *model.PicSample, m *manager.Manager, facesetname string) 
 		for _, e := range m.RingBuffer[facesetname].Data {
 			pic0, ok := e.(*model.PicSample)
 			if !ok {
-				glog.Errorf("the e in ringBuffer is nil, now return.")
-				return
+				glog.Errorf("the e in ringBuffer is nil, now continue.")
+				continue
 			}
 			sr, err := caculateSimilarityWithOther(pic0, pic, m)
 			if err != nil {
