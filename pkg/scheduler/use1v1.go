@@ -118,7 +118,12 @@ func registerToDb(pic *model.PicSample, m *manager.Manager, facesetname string) 
 	if !m.RingBuffer[facesetname].IsEmpty() {
 		glog.Infof("ringbuffer cap is %d, length is %d.", m.RingBuffer[facesetname].Capacity, m.RingBuffer[facesetname].Length)
 		for _, e := range m.RingBuffer[facesetname].Data {
-			sr, err := caculateSimilarityWithOther(e.(*model.PicSample), pic, m)
+			pic0, ok := e.(*model.PicSample)
+			if !ok {
+				glog.Errorf("the e in ringBuffer is nil, now return.")
+				return
+			}
+			sr, err := caculateSimilarityWithOther(pic0, pic, m)
 			if err != nil {
 				glog.Error("caculate ringbuffer similary failed.")
 				return
