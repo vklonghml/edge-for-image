@@ -55,7 +55,7 @@ func (m *Manager) Faceset(w http.ResponseWriter, r *http.Request) {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(fmt.Sprintf("{\"status\": \"success\"")))
+		w.Write([]byte(fmt.Sprintf("{\"status\": \"success\"}")))
 		return
 	} else {
 		glog.Infof("the method %s is not implemented yet.", r.Method)
