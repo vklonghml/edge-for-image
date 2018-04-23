@@ -657,6 +657,11 @@ func (m *Manager) updateface(face map[string]interface{}) error {
 			if err != nil {
 				return err
 			}
+			//need update knowfaceinfo meanwhile. The imageurl of facedb is equal to the similaryimageURL of knowfaceinfo.
+			_, knowErr := m.Mydb.Exec("update knowfaceinfo set name=?, age=?, address=? where similaryimageURL=?", name, age, address, imageurl)
+			if knowErr != nil {
+				return knowErr
+			}
 		} else {
 			glog.Warning("unknow table to update")
 		}
