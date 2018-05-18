@@ -286,7 +286,7 @@ func (m *Manager) AddFace(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *Manager) Listfaces(w http.ResponseWriter, r *http.Request) {
-	glog.Infof("method: %s", r.Method)
+	//glog.Infof("method: %s", r.Method)
 	if r.Method == "GET" {
 		urlpara, err := url.ParseQuery(r.URL.RawQuery)
 		if err != nil {
@@ -294,7 +294,7 @@ func (m *Manager) Listfaces(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 		}
 
-		glog.Infof("url : %#v", urlpara)
+		//glog.Infof("url : %#v", urlpara)
 		// data, err := ioutil.ReadAll(r.Body)
 		// if err != nil {
 		// 	glog.Error(err)
@@ -321,7 +321,7 @@ func (m *Manager) Listfaces(w http.ResponseWriter, r *http.Request) {
 		timeby, err := strconv.ParseBool(urlpara["timeby"][0])
 		isKnow := urlpara["isknown"][0]
 
-		glog.Infof("start:%s, end:%s, number:%s", start, end, number)
+		//glog.Infof("start:%s, end:%s, number:%s", start, end, number)
 
 		// start, err := r.URL.Query()["start"]
 		// start, err := string(r.URL.Query()["start"])

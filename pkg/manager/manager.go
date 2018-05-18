@@ -482,7 +482,7 @@ func (m *Manager) GetAllfaces(facesetname, table string, start, end, numbers int
 		sort = "asc"
 	}
 	qstr := fmt.Sprintf("select * from %s where facesetname='%s' order by createtime %s", table, facesetname, sort)
-	glog.Infof(qstr)
+	//glog.Infof(qstr)
 	rows, err := m.Mydb.Query(qstr)
 	if err != nil {
 		glog.Errorf("Query db err: %s", err.Error())
