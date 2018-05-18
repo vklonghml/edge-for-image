@@ -1,6 +1,7 @@
 BUILD=edge-for-image
 CODE=edge_server.go
 HOST=root@49.4.5.210
+REMOTE_DIR=/opt/Golang/src/edge-for-image
 
 .PHONY: build
 build:
@@ -12,8 +13,8 @@ rerun: build
 
 deploy: build
 	@-ssh $(HOST) pkill edge-for-image
-	scp edge-for-image $(HOST):/opt/edge-for-image/
-	./start-edge-remote.sh
+	scp edge-for-image $(HOST):$(REMOTE_DIR)/
+	ssh $(HOST) "cd $(REMOTE_DIR) && ./start-edge-local.sh"
 
 
 .PHONY: clean
