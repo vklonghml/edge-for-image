@@ -28,6 +28,7 @@ func (s *Scheduler) ScheduleRegisterCacheUse1v1(facesetname string, m *manager.M
 	lock.Unlock()
 
 	if !m.CloseToRegist[facesetname] {
+		glog.Infof("pujie1")
 		count, err := m.CountRegisterDB(facesetname)
 		if err != nil {
 			glog.Errorf("count faceset : %s , err: %s", facesetname, err.Error())
@@ -39,6 +40,7 @@ func (s *Scheduler) ScheduleRegisterCacheUse1v1(facesetname string, m *manager.M
 	}
 
 	if len(tempRegisterCache) == 1 {
+		glog.Infof("temp register cache size is 1, faceset name is %v.", facesetname)
 		if !m.CloseToRegist[facesetname] {
 			registerToDb(&tempRegisterCache[0], m, facesetname)
 		} else {
@@ -47,6 +49,7 @@ func (s *Scheduler) ScheduleRegisterCacheUse1v1(facesetname string, m *manager.M
 
 	} else if len(tempRegisterCache) >= 2 { //more than one pic in cache
 		srMatrix, remains := s.caculateSimilarityWithCache1v1(tempRegisterCache, m)
+		glog.Infof("temp register cache size is %v, faceset name is %v.", len(tempRegisterCache) ,facesetname)
 		srList := s.caculateMostSimilarity(&srMatrix)
 
 		for _, v := range srList {

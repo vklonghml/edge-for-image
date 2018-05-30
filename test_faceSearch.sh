@@ -1,11 +1,11 @@
 
 # search face api test
-IMAGE_URL=http://49.4.5.210:9090/huawei-1/b0479d17-6b55-4eab-8e02-2347562bc6b1-1523875205207.jpg
+IMAGE_URL=http://49.4.5.210:9090/txry/ffdf1c32-3b03-40aa-b2a1-65a255e6b6b8-1521189474151.jpg
 
-curl -X PUT http://127.0.0.1:8086/v1/faceSet/25/addFace -d '{"imageUrl": "'"$IMAGE_URL"'", "externalImageID": "123456"}'
+curl -X PUT http://127.0.0.1:8086/v1/faceSet/44/addFace -d '{"imageUrl": "'"$IMAGE_URL"'", "externalImageID": "123456"}'
 
 while :
 do
   date
-  curl -X GET http://127.0.0.1:8086/v1/faceSet/25/faceSearch?url=$IMAGE_URL
+  curl -X GET http://127.0.0.1:8086/v1/faceSet/44/faceSearch?url=$IMAGE_URL
 done

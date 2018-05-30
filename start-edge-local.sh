@@ -1,3 +1,4 @@
+pkill edge-for-image
 ./edge-for-image \
 --static-dir=/opt/edgeServer/images \
 --v=2 \
@@ -10,7 +11,7 @@
 --similarity=92 \
 --pic-wait-sec=20 \
 --regist-period-sec=5 \
---detect-period-sec=5 \
+--detect-period-sec=2 \
 --regist-cache-size=5 \
 --detect-cache-size=5 \
 --auto-regist-size=100 \
