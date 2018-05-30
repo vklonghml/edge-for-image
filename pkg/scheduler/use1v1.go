@@ -109,6 +109,8 @@ func detectToDb(pic *model.PicSample, m *manager.Manager, facesetname string) {
 	if isTimeOut(pic, m) { //if timeout, the detect
 		m.SaveToDetectDB(pic, facesetname)
 		m.LastSaveMap[pic.MostSimilarId] = pic.UploadTime
+	} else {
+		glog.Infof("the image has been detect recent, ignored this detect, url is %v.", pic.ImageUrl)
 	}
 }
 
