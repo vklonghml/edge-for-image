@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"github.com/golang/glog"
-	"net/http"
 	"os"
 	"strings"
 )
@@ -199,8 +198,7 @@ func (s *Scheduler) deleteCacheFaceSet(cacheList []model.PicSample, facesetName 
 	if len(cacheList) > 0 {
 		for _, picSample := range cacheList {
 			// delete from faceset
-			urlStr := m.CustConfig.Aiurl + "/v1/faceSet/" + m.FaceidMap[facesetName+model.CACHE_SUFFIX] + "/" + picSample.Id
-			_, err := m.AiCloud.DeleteFace(urlStr, http.MethodDelete)
+			_, err := m.AiCloud.DeleteFace(facesetName, picSample.Id)
 			if err != nil {
 				glog.Error(err)
 				return err

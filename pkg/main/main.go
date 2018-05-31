@@ -6,14 +6,13 @@ const imageBase64  = "/9j/4AAQSkZJRgABAQAASABIAAD/4QCwRXhpZgAATU0AKgAAAAgABQESAA
 const url = "http://c.hiphotos.baidu.com/baike/pic/item/6a600c338744ebf890fbe408d5f9d72a6059a77b.jpg"
 
 func main1() {
-
 	aa := accessai.NewAccessai()
 	aa.FaceDetectBase64(imageBase64)
 }
 
 func main() {
 	aa :=accessai.NewAccessai()
-	aa.FaceDetect("/facedetect/zhoujielun.jpg")
-	//aa.FaceDetect(url)
+	//aa.FaceDetect("/facedetect/zhoujielun.jpg")
+	aa.FaceDetect(url)
 }
 

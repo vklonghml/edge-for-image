@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 export IP=127.0.0.1
-export FACESET="test31"
+export FACESET="test"
 . pujie.jpg.base64
 #. test.txt
 #export IMAGE=`base64 face/普杰.png`

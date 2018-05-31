@@ -1,18 +1,24 @@
 pkill edge-for-image
 ./edge-for-image \
---static-dir=/opt/edgeServer/images \
+--static-dir=/opt/s/images \
 --v=2 \
 --alsologtostderr \
---db-conn-str="root:@tcp(127.0.0.1:3306)/testaicloud" \
---host=192.168.1.52 \
---public-host=49.4.5.210 \
+--db-conn-str="root:@tcp(127.0.0.1:3306)/aicloud" \
+--host=127.0.0.1 \
+--public-host=117.78.43.230 \
 --port=9090 \
 --disk-threshod=80 \
 --similarity=92 \
---pic-wait-sec=20 \
---regist-period-sec=5 \
---detect-period-sec=2 \
+--pic-wait-sec=15 \
+--regist-period-sec=5000 \
+--detect-period-sec=50 \
 --regist-cache-size=5 \
 --detect-cache-size=5 \
 --auto-regist-size=100 \
---aiurl=http://127.0.0.1:8086 >> edge-for-image.log 2>&1 &
+--iam-url=https://iam.cn-north-1.myhuaweicloud.com/v3/auth/tokens \
+--iam-name=QiFei \
+--iam-password=${PASSWD} \
+--iam-project=cn-north-1 \
+--iam-domain=QiFei \
+--iam-refresh=3600 \
+--aiurl=https://frs.cn-north-1.myhuaweicloud.com/v1/ >> edge-for-image.log 2>&1 &

@@ -43,8 +43,8 @@ var (
 )
 
 var (
-	projectId = "e73c384a7c5f475886afc5e7d5fd09fd"
-	frsUrl    = "https://frs.cn-north-1.myhuaweicloud.com/v1/"
+	//frsUrl    = pkg.Config0.Aiurl
+	frsUrl = "https://frs.cn-north-1.myhuaweicloud.com/v1/"
 )
 
 // IAMClient type
@@ -117,41 +117,41 @@ func (c *IAMClient) GetToken() (string, string, error) {
 }
 
 func getFaceDetectUrl() string {
-	return fmt.Sprintf("%s%s/face-detect", frsUrl, projectId)
+	return fmt.Sprintf("%s%s/face-detect", frsUrl, ProjectID)
 }
 
 func getFaceCompareUrl() string {
-	return fmt.Sprintf("%s%s/face-compare", frsUrl, projectId)
+	return fmt.Sprintf("%s%s/face-compare", frsUrl, ProjectID)
 }
 
 func getAddFaceUrl(faceSetName string) string {
-	return fmt.Sprintf("%s%s/face-sets/%s/faces", frsUrl, projectId, faceSetName)
+	return fmt.Sprintf("%s%s/face-sets/%s/faces", frsUrl, ProjectID, faceSetName)
 }
 
 func getGetFaceUrl(faceSetName, faceId string) string {
-	return fmt.Sprintf("%s%s/face-sets/%s/faces?face_id=%s", frsUrl, projectId, faceSetName, faceId)
+	return fmt.Sprintf("%s%s/face-sets/%s/faces?face_id=%s", frsUrl, ProjectID, faceSetName, faceId)
 }
 
 func getDeleteFaceUrl(faceSetName, faceId string) string {
-	return fmt.Sprintf("%s%s/face-sets/%s/faces?face_id=%s", frsUrl, projectId, faceSetName, faceId)
+	return fmt.Sprintf("%s%s/face-sets/%s/faces?face_id=%s", frsUrl, ProjectID, faceSetName, faceId)
 }
 
 func getCreateFaceSetUrl() string {
-	return fmt.Sprintf("%s%s/face-sets", frsUrl, projectId)
+	return fmt.Sprintf("%s%s/face-sets", frsUrl, ProjectID)
 }
 
 func getListFaceSetUrl() string {
-	return fmt.Sprintf("%s%s/face-sets", frsUrl, projectId)
+	return fmt.Sprintf("%s%s/face-sets", frsUrl, ProjectID)
 }
 
 func getGetFaceSetUrl(faceSetName string) string {
-	return fmt.Sprintf("%s%s/face-sets/%s", frsUrl, projectId, faceSetName)
+	return fmt.Sprintf("%s%s/face-sets/%s", frsUrl, ProjectID, faceSetName)
 }
 
 func getDeleteFaceSetUrl(faceSetName string) string {
-	return fmt.Sprintf("%s%s/face-sets/%s", frsUrl, projectId, faceSetName)
+	return fmt.Sprintf("%s%s/face-sets/%s", frsUrl, ProjectID, faceSetName)
 }
 
 func getFaceSearchUrl(faceSetName string) string {
-	return fmt.Sprintf("%s%s/face-sets/%s/search", frsUrl, projectId, faceSetName)
+	return fmt.Sprintf("%s%s/face-sets/%s/search", frsUrl, ProjectID, faceSetName)
 }
