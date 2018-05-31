@@ -52,7 +52,7 @@ func InitConfig() *Config {
 	flag.StringVar(&config.IAMURL, "iam-url", ".", "iam url")
 	flag.StringVar(&config.IAMName, "iam-name", ".", "iam name")
 	flag.StringVar(&config.IAMPassword, "iam-password", ".", "iam password")
-	flag.StringVar(&config.IAMPassword, "iam-project", ".", "iam project")
+	flag.StringVar(&config.IAMProject, "iam-project", ".", "iam project")
 	flag.StringVar(&config.IAMDomain, "iam-domain", ".", "iam domain")
 	flag.IntVar(&config.IAMRefresh, "iam-refresh", 3600, "iam refresh interval")
 
