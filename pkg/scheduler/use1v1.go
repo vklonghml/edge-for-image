@@ -139,8 +139,9 @@ func registerToDb(pic *model.PicSample, m *manager.Manager, facesetname string) 
 		}
 	}
 
-	m.CaculateSimilarity(pic, facesetname)
-	m.CaculateMostSimilarity(pic)
+	//注释掉这里试试看
+	//m.CaculateSimilarity(pic, facesetname)
+	//m.CaculateMostSimilarity(pic)
 
 	if pic.MostSimilar < int32(m.CustConfig.Similarity) {
 		m.SaveToRegisterDB(pic, facesetname)

@@ -50,6 +50,8 @@ CREATE TABLE `facedb` (
     `imageaddress` VARCHAR(255) NULL DEFAULT NULL,
     `imageurl` VARCHAR(255) NULL DEFAULT NULL,
     `createtime` BIGINT(64) NOT NULL,
+    `similaryimageURL` VARCHAR(255) NULL DEFAULT NULL,
+    `similarity` VARCHAR(255) NULL DEFAULT NULL,
     PRIMARY KEY (`id`)
 );
 
@@ -65,6 +67,8 @@ CREATE TABLE `knowfaceinfo` (
     `imageaddress` VARCHAR(255) NULL DEFAULT NULL,
     `imageurl` VARCHAR(255) NULL DEFAULT NULL,
     `createtime` BIGINT(64) NOT NULL,
+    `similaryimageURL` VARCHAR(255) NULL DEFAULT NULL,
+    `similarity` VARCHAR(255) NULL DEFAULT NULL,
     PRIMARY KEY (`id`)
 );
 
@@ -80,6 +84,8 @@ CREATE TABLE `unknowfaceinfo` (
     `imageaddress` VARCHAR(255) NULL DEFAULT NULL,
     `imageurl` VARCHAR(255) NULL DEFAULT NULL,
     `createtime` BIGINT(64) NOT NULL,
+    `similaryimageURL` VARCHAR(255) NULL DEFAULT NULL,
+    `similarity` VARCHAR(255) NULL DEFAULT NULL,
     PRIMARY KEY (`id`)
 );
 
