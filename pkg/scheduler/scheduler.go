@@ -5,7 +5,6 @@ import (
 	"edge-for-image/pkg/model"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"github.com/golang/glog"
 	"net/http"
 	"os"
@@ -174,12 +173,7 @@ func (s *Scheduler) addCacheFaceSet(cacheList []model.PicSample, facesetName str
 				}
 
 				imageurl := "http://" + m.CustConfig.PublicHost + ":" + m.CustConfig.Port + "/" + facesetName + "/" + picSample.Id
-				// /v1/faceSet/13345/addFace
-				urlStr := m.CustConfig.Aiurl + "/v1/faceSet/" + m.FaceidMap[facesetName+model.CACHE_SUFFIX] + "/addFace"
-				body := []byte(fmt.Sprintf("{\"imageUrl\": \"%s\", \"faceSetId\": \"%s\"}", imageurl, m.FaceidMap[facesetName+model.CACHE_SUFFIX]))
-				// resp, err := m.AiCloud.FakeAddFace(urlStr, http.MethodPost, body)
-				glog.Infof("addCacheFaceSet: the urlStr is %s, body is %s.", urlStr, body)
-				resp, err := m.AiCloud.AddFace(urlStr, http.MethodPut, body)
+				resp, err := m.AiCloud.AddFace(facesetName, imageurl)
 				if err != nil {
 					glog.Errorf("add to faceset err: %s", err.Error())
 				}

@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"io"
-	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -61,10 +60,7 @@ func (m *Manager) CaculateSimilarity(picSample *model.PicSample, imageBase64 str
 		picSample.ImageAddress = imageaddress
 		picSample.ImageUrl = imageurl
 		picSample.Face = jdface
-		urlStr := m.CustConfig.Aiurl + "/v1/faceSet/" + m.FaceidMap[facesetname] + "/faceSearch?url=" + imageurl
-		// body := []byte(fmt.Sprintf("{\"imageUrl\": \"%s\"}", imageurl))
-		// resp, err := m.AiCloud.FakeFaceSearch(urlStr, http.MethodPost, body)
-		resp, err := m.AiCloud.FaceSearch(urlStr, http.MethodGet, nil)
+		resp, err := m.AiCloud.FaceSearch(facesetname, imageurl)
 		if err != nil {
 			glog.Errorf(err.Error())
 			return err

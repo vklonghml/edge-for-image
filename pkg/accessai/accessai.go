@@ -7,13 +7,10 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	// "strings"
-	"time"
 
 	http_utils "edge-for-image/pkg/http"
 
 	"github.com/golang/glog"
-	"github.com/satori/go.uuid"
 )
 
 // Accessai define client to ad
@@ -28,98 +25,140 @@ func NewAccessai() *Accessai {
 	}
 }
 
-// FakeAddFace create face
-func (ai *Accessai) FakeAddFace(urlStr, httpMethod string, body []byte) ([]byte, error) {
-	uid, err := uuid.NewV4()
-	if err != nil {
-		glog.Errorf("uuid generate error: %s", err.Error())
+// FaceDetect
+func (ai *Accessai) FaceDetect(imageUrl string) ([]byte, error) {
+	glog.Infof("FaceDetect: image url is: %s", imageUrl)
+	req := &FaceDetectRequest{
+		ImageUrl: imageUrl,
 	}
-	resp := []byte(fmt.Sprintf("{\"faceSetName\":\"faceset2\",\"faceID\":\"%s\",\"faceSetID\":\"e5919040-ae9e-4ad2-baac-4de04c46ffc4\",\"face\":{\"confidence\":\"95\",\"boundingBox\":{\"topLeftX\":\"0\",\"topLeftY\":\"0\",\"width\":\"100\",\"height\":\"100\"}}}", uid))
-	return resp, nil
+	body, _ := json.Marshal(req)
+	resp, err := access(getFaceDetectUrl(), nil, body, len(body), http.MethodPost, ai.HTTPClient)
+	glog.Infof("FaceDetect: return body is: %s.", string(resp))
+	return resp, err
 }
 
-// FakeCreateFaceset create face set
-func (ai *Accessai) FakeCreateFaceset(urlStr, httpMethod string, body []byte) ([]byte, error) {
-	bdata := make(map[string]interface{})
-	json.Unmarshal(body, &bdata)
-	uid, err := uuid.NewV4()
-	if err != nil {
-		glog.Errorf("uuid generate error: %s", err.Error())
+// FaceDetect
+func (ai *Accessai) FaceDetectBase64(imageBase64 string) ([]byte, error) {
+	req := &FaceDetectBase64Request{
+		ImageBase64: imageBase64,
 	}
-	resp := []byte(fmt.Sprintf("{\"faceSetName\":\"%s\",\"faceSetID\":\"%s\",\"createDate\":\"%s\"}", bdata["faceSetName"], uid, time.Now()))
-	return resp, nil
-}
-
-// FakeFaceSearch create face set
-func (ai *Accessai) FakeFaceSearch(urlStr, httpMethod string, body []byte) ([]byte, error) {
-	resp := []byte(fmt.Sprintf("{\"faceSetName\":\"faceset2\",\"faces\":[{\"externalImageID\":\"123-external\",\"faceID\":\"0b621d18-c59e-4c6e-9599-2b34fb3a0d45\",\"similarity\":\"75\"}]}"))
-	return resp, nil
-}
-
-// FaceSearch create face set
-func (ai *Accessai) FaceSearch(urlStr, httpMethod string, body []byte) ([]byte, error) {
-	glog.Infof("FaceSearch: url is: %s, body is: %s", urlStr, body)
-	resp, err := access(urlStr, nil, body, len(body), httpMethod, ai.HTTPClient)
-	glog.Infof("FaceSearch: return body is: %s, ", string(resp))
+	body, _ := json.Marshal(req)
+	resp, err := access(getFaceDetectUrl(), nil, body, len(body), http.MethodPost, ai.HTTPClient)
+	glog.Infof("FaceDetect: return body is: %s.", string(resp))
 	return resp, err
 }
 
-// FaceDetect create face set
-func (ai *Accessai) FaceDetect(urlStr, httpMethod string, body []byte) ([]byte, error) {
-	//glog.Infof("FaceDetect: url is: %s", urlStr)
-	resp, err := access(urlStr, nil, body, len(body), httpMethod, ai.HTTPClient)
+// FaceCompare
+func (ai *Accessai) FaceCompare(image1Url, image2Url string) ([]byte, error) {
+	glog.Infof("FaceCompare: image1 is: %s, image2 is %s.", image1Url, image2Url)
+	req := &FaceCompareRequest{
+		Image1Url: image1Url,
+		Image2Url: image2Url,
+	}
+	body, _ := json.Marshal(req)
+	resp, err := access(getFaceCompareUrl(), nil, body, len(body), http.MethodPost, ai.HTTPClient)
+	glog.Infof("FaceCompare: return body is: %s, ", string(resp))
 	return resp, err
 }
 
-// CreateFaceset create face set
-func (ai *Accessai) CreateFaceset(urlStr, httpMethod string, body []byte) ([]byte, error) {
-	glog.Infof("CreateFaceset: url is: %s, body is %s.", urlStr, body)
-	resp, err := access(urlStr, nil, body, len(body), httpMethod, ai.HTTPClient)
-	glog.Infof("CreateFaceset: return body is: %s, ", string(resp))
-	return resp, err
-}
-
-// DeleteFaceset delete face set
-func (ai *Accessai) DeleteFaceset(urlStr, httpMethod string, body []byte) ([]byte, error) {
-	glog.Infof("DeleteFaceset: url is: %s, body is: %s", urlStr, body)
-	resp, err := access(urlStr, nil, body, len(body), httpMethod, ai.HTTPClient)
-	glog.Infof("DeleteFaceset: return body is: %s, ", string(resp))
+// FaceCompareBase64
+func (ai *Accessai) FaceCompareBase64(image1Base64, image2Base64 string) ([]byte, error) {
+	req := &FaceCompareBase64Request{
+		Image1Base64: image1Base64,
+		Image2Base64: image2Base64,
+	}
+	body, _ := json.Marshal(req)
+	resp, err := access(getFaceCompareUrl(), nil, body, len(body), http.MethodPost, ai.HTTPClient)
+	glog.Infof("FaceCompare: return body is: %s, ", string(resp))
 	return resp, err
 }
 
 // AddFace create face
-func (ai *Accessai) AddFace(urlStr, httpMethod string, body []byte) ([]byte, error) {
-	glog.Infof("AddFace: url is: %s, body is %s", urlStr, body)
-	resp, err := access(urlStr, nil, body, len(body), httpMethod, ai.HTTPClient)
+func (ai *Accessai) AddFace(faceSetName, imageUrl string) ([]byte, error) {
+	glog.Infof("AddFace: faceSetName is: %s, imageUrl is %s", faceSetName, imageUrl)
+	req := &AddFaceRequest{
+		ImageUrl: imageUrl,
+	}
+	body, _ := json.Marshal(req)
+	resp, err := access(getAddFaceUrl(faceSetName), nil, body, len(body), http.MethodPost, ai.HTTPClient)
+	glog.Infof("AddFace: return body is: %s, ", string(resp))
+	return resp, err
+}
+
+// AddFace create face base64
+func (ai *Accessai) AddFaceBase64(faceSetName, imageBase64 string) ([]byte, error) {
+	glog.Infof("AddFace: faceSetName is: %s", faceSetName)
+	req := &AddFaceBase64Request{
+		ImageBase64: imageBase64,
+	}
+	body, _ := json.Marshal(req)
+	resp, err := access(getAddFaceUrl(faceSetName), nil, body, len(body), http.MethodPost, ai.HTTPClient)
 	glog.Infof("AddFace: return body is: %s, ", string(resp))
 	return resp, err
 }
 
 // GetFace get face
-func (ai *Accessai) GetFace(urlStr, httpMethod string, ) ([]byte, error) {
-	glog.Infof("GetFace: url is: %s", urlStr)
-	resp, err := access(urlStr, nil, []byte(""), 0, httpMethod, ai.HTTPClient)
+func (ai *Accessai) GetFace(faceSetName, faceId string) ([]byte, error) {
+	glog.Infof("GetFace: faceSetName is: %s, faceId is %s", faceSetName, faceId)
+	resp, err := access(getGetFaceUrl(faceSetName, faceId), nil, []byte(""), 0, http.MethodGet, ai.HTTPClient)
 	glog.Infof("GetFace: return body is: %s, ", string(resp))
 	return resp, err
 }
 
 // DeleteFace delete face
-func (ai *Accessai) DeleteFace(urlStr, httpMethod string, ) ([]byte, error) {
-	glog.Infof("DeleteFace: url is: %s", urlStr)
-	resp, err := access(urlStr, nil, []byte(""), 0, httpMethod, ai.HTTPClient)
+func (ai *Accessai) DeleteFace(faceSetName, faceId string) ([]byte, error) {
+	glog.Infof("DeleteFace: faceSetName is: %s, faceId is %s", faceSetName, faceId)
+	resp, err := access(getDeleteFaceUrl(faceSetName, faceId), nil, []byte(""), 0, http.MethodDelete, ai.HTTPClient)
 	glog.Infof("DeleteFace: return body is: %s, ", string(resp))
 	return resp, err
 }
 
-func (ai *Accessai) FaceVerify(urlStr, httpMethod string, body []byte) ([]byte, error) {
-	glog.Infof("FaceVerify: url is: %s, body is %s.", urlStr, body)
-	resp, err := access(urlStr, nil, body, len(body), httpMethod, ai.HTTPClient)
-	glog.Infof("FaceVerify: return body is: %s, ", string(resp))
+// CreateFaceset create face set
+func (ai *Accessai) CreateFaceset(faceSetName string, faceSetCapacity int64) ([]byte, error) {
+	glog.Infof("CreateFaceset: faceSetName is: %s, faceSetCapacity is %s", faceSetName, faceSetCapacity)
+	req := &CreateFacesetRequest{
+		FaceSetName:     faceSetName,
+		FaceSetCapacity: faceSetCapacity,
+	}
+	body, _ := json.Marshal(req)
+	resp, err := access(getCreateFaceSetUrl(), nil, body, len(body), http.MethodPost, ai.HTTPClient)
+	glog.Infof("CreateFaceset: return body is: %s, ", string(resp))
+	return resp, err
+}
+
+// DeleteFaceset delete face set
+func (ai *Accessai) DeleteFaceset(faceSetName string) ([]byte, error) {
+	glog.Infof("DeleteFaceset: faceSetName is: %s", faceSetName)
+	resp, err := access(getDeleteFaceSetUrl(faceSetName), nil, []byte(""), 0, http.MethodDelete, ai.HTTPClient)
+	glog.Infof("DeleteFaceset: return body is: %s, ", string(resp))
+	return resp, err
+}
+
+// FaceSearch create face set
+func (ai *Accessai) FaceSearch(faceSetName, imageUrl string) ([]byte, error) {
+	glog.Infof("FaceSearch: faceSetName is: %s, imageUrl is: %s", faceSetName, imageUrl)
+	req := &FaceSearchRequest{
+		ImageUrl: imageUrl,
+	}
+	body, _ := json.Marshal(req)
+	resp, err := access(getFaceSearchUrl(faceSetName), nil, body, len(body), http.MethodPost, ai.HTTPClient)
+	glog.Infof("FaceSearch: return body is: %s.", string(resp))
+	return resp, err
+}
+
+// FaceSearch create face set
+func (ai *Accessai) FaceSearchBase64(faceSetName, imageBase64 string) ([]byte, error) {
+	glog.Infof("FaceSearch: faceSetName is: %s", faceSetName)
+	req := &FaceSearchBase64Request{
+		ImageBase64: imageBase64,
+	}
+	body, _ := json.Marshal(req)
+	resp, err := access(getFaceSearchUrl(faceSetName), nil, body, len(body), http.MethodPost, ai.HTTPClient)
+	glog.Infof("FaceSearch: return body is: %s.", string(resp))
 	return resp, err
 }
 
 func access(URL string, headers map[string]string, content []byte, contentLength int, httpMethod string, httpclient *http.Client) ([]byte, error) {
-	//glog.Infof("body is : %s", content)
 	var reqBody io.Reader
 	var req *http.Request
 	var err error
@@ -134,6 +173,9 @@ func access(URL string, headers map[string]string, content []byte, contentLength
 		return nil, err
 	}
 
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("X-Auth-Token", TOKEN)
+
 	resp, err := http_utils.SendRequest(req, httpclient)
 	if err != nil {
 		glog.Errorf("error sending data to ai service %s", err.Error())
@@ -142,7 +184,5 @@ func access(URL string, headers map[string]string, content []byte, contentLength
 	defer resp.Body.Close()
 
 	bodyBytes, _ := ioutil.ReadAll(resp.Body)
-	//bodyString := string(bodyBytes)
-	//glog.Infof("response from ai: %s, return code:%s", bodyString, string(resp.StatusCode))
 	return bodyBytes, err
 }

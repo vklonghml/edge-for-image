@@ -12,7 +12,6 @@ import (
 	"fmt"
 
 	"database/sql"
-	"net/http"
 	"os"
 	"strconv"
 
@@ -29,6 +28,7 @@ import (
 	"github.com/satori/go.uuid"
 )
 
+var FACE_SET_CAPACITY int64 = 100000
 // var (
 // 	CustConfig *pkg.Config
 // 	AiCloud    *accessai.Accessai
@@ -112,10 +112,7 @@ func (m *Manager) listAlllfiles(facesetname, filename string) bool {
 
 func (m *Manager) DetectFace(imagebase64 string) ([]byte, error) {
 	// first detect image face
-	urlStr := m.CustConfig.Aiurl + "/v1/faceDetect"
-	body := []byte(fmt.Sprintf("{\"imageBase64\": \"%s\"}", imagebase64))
-	// resp, err := m.AiCloud.FakeFaceSearch(urlStr, http.MethodPost, body)
-	resp, err := m.AiCloud.FaceDetect(urlStr, http.MethodPost, body)
+	resp, err := m.AiCloud.FaceDetectBase64(imagebase64)
 	if err != nil {
 		glog.Errorf(err.Error())
 		return nil, err
@@ -190,10 +187,7 @@ func (m *Manager) CreateFacesetIfNotExist(facesetname string) error {
 	}
 	glog.Infof("faceset %s is not exist, now creating faceset", facesetname)
 
-	urlStr := m.CustConfig.Aiurl + "/v1/faceSet"
-	body := []byte(fmt.Sprintf("{\"faceSetName\":\"%s\"}", facesetname))
-	// resp, err := aicloud.FakeCreateFaceset(urlStr, http.MethodPost, body)
-	resp, err := m.AiCloud.CreateFaceset(urlStr, http.MethodPost, body)
+	resp, err := m.AiCloud.CreateFaceset(facesetname, FACE_SET_CAPACITY)
 	if err != nil {
 		glog.Errorf("create faceset err: %s", err.Error())
 		return err
@@ -438,11 +432,7 @@ func (m *Manager) insertIntoKnow(largesimilar, imageaddress, imageurl string, fa
 
 // func (m *Manager) insertIntoFacedb(facesetname, imageaddress, imageurl, name, age, address string, face interface{}) {
 func (m *Manager) insertIntoFacedb(facesetname, imageaddress, imageurl, name, age, address string, face []byte) {
-	// /v1/faceSet/13345/addFace
-	urlStr := m.CustConfig.Aiurl + "/v1/faceSet/" + m.FaceidMap[facesetname] + "/addFace"
-	body := []byte(fmt.Sprintf("{\"imageUrl\": \"%s\", \"externalImageID\": \"%s\"}", imageurl, m.FaceidMap[facesetname]))
-	// resp, err := m.AiCloud.FakeAddFace(urlStr, http.MethodPost, body)
-	resp, err := m.AiCloud.AddFace(urlStr, http.MethodPut, body)
+	resp, err := m.AiCloud.AddFace(facesetname, imageurl)
 	if err != nil {
 		glog.Errorf("search face err: %s", err.Error())
 	}
@@ -583,8 +573,7 @@ func (m *Manager) Deletefaces(facesetname string, blist []interface{}, deleteima
 			// }
 		} else if isknown == "2" {
 			// delete from faceset
-			urlStr := m.CustConfig.Aiurl + "/v1/faceSet/" + m.FaceidMap[facesetname] + "/" + faceid
-			_, err := m.AiCloud.DeleteFace(urlStr, http.MethodDelete)
+			_, err := m.AiCloud.DeleteFace(facesetname, faceid)
 			if err != nil {
 				glog.Error(err)
 				return err
@@ -687,28 +676,17 @@ func (m *Manager) timeToRemoveImages() {
 
 }
 func (m *Manager) DeleteFaceset(facesetname string) {
-	urlStr := m.CustConfig.Aiurl + "/v1/faceSet"
-	body := []byte(fmt.Sprintf("{\"faceSetName\":\"%s\"}", facesetname))
-	m.AiCloud.DeleteFaceset(urlStr, http.MethodDelete, body)
+	m.AiCloud.DeleteFaceset(facesetname)
 }
 
 func (m *Manager) FaceVerify(url1 string, url2 string) (resp payload.FaceVerifyResponse) {
-	urlStr := m.CustConfig.Aiurl + "/v1/faceVerify"
-	req := &payload.FaceVerifyRequest{
-		Image1URL: url1,
-		Image2Url: url2,
-	}
-	//todo: here igored error.
-	body, _ := json.Marshal(req)
-	data, _ := m.AiCloud.FaceVerify(urlStr, http.MethodPost, body)
+	data, _ := m.AiCloud.FaceCompare(url1, url2)
 	json.Unmarshal(data, &resp)
 	return resp
 }
 
 func (m *Manager) AddFaceToSet(imageUrl string, facesetname string) (resp payload.AddFaceResponse) {
-	urlStr := m.CustConfig.Aiurl + "/v1/faceSet/" + m.FaceidMap[facesetname] + "/addFace"
-	body := []byte(fmt.Sprintf("{\"imageUrl\": \"%s\", \"externalImageID\": \"%s\"}", imageUrl, m.FaceidMap[facesetname]))
-	data, _ := m.AiCloud.AddFace(urlStr, http.MethodPut, body)
+	data, _ := m.AiCloud.AddFace(facesetname, imageUrl)
 	json.Unmarshal(data, &resp)
 	return resp
 }
