@@ -4,7 +4,6 @@ import (
 	"edge-for-image/pkg/model"
 	"fmt"
 	"github.com/golang/glog"
-	"strconv"
 )
 
 func (m *Manager) CaculateSimilarity(picSample *model.PicSample, facesetname string) error {
@@ -41,9 +40,8 @@ func (m *Manager) CaculateMostSimilarity(sample *model.PicSample) {
 			}
 		}
 		sample.MostSimilar = curMostSimilarityValue
-		value, _ := strconv.ParseInt(curMostSimilarityKey, 10, 32)
-
-		sample.MostSimilarId = fmt.Sprintf("%d", value)
+		sample.MostSimilarId = fmt.Sprintf("%s", curMostSimilarityKey)
 		glog.Infof("CaculateMostSimilarity: faceid is %s.", sample.MostSimilarId)
+		//glog.Infof("picSample is %#v", sample)
 	}
 }
