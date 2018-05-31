@@ -4,7 +4,6 @@ import (
 	"edge-for-image/pkg/manager"
 	"edge-for-image/pkg/model"
 	"github.com/golang/glog"
-	"strconv"
 	"sync"
 	"errors"
 )
@@ -49,7 +48,7 @@ func (s *Scheduler) ScheduleRegisterCacheUse1v1(facesetname string, m *manager.M
 
 	} else if len(tempRegisterCache) >= 2 { //more than one pic in cache
 		srMatrix, remains := s.caculateSimilarityWithCache1v1(tempRegisterCache, m)
-		glog.Infof("temp register cache size is %v, faceset name is %v.", len(tempRegisterCache) ,facesetname)
+		glog.Infof("temp register cache size is %v, faceset name is %v.", len(tempRegisterCache), facesetname)
 		srList := s.caculateMostSimilarity(&srMatrix)
 
 		for _, v := range srList {
@@ -229,10 +228,9 @@ func caculateSimilarityWithOther(pic1 *model.PicSample, pic2 *model.PicSample, m
 		return sr, errors.New("pic image url is nil.")
 	}
 
-	resp := m.FaceVerify(pic1.ImageUrl, pic2.ImageUrl)
+	resp, err := m.AiCloud.FaceCompare(pic1.ImageUrl, pic2.ImageUrl)
 	sr.From = pic1
 	sr.To = pic2
-	f, _ := strconv.ParseFloat(resp.Similarity, 32)
-	sr.Similary = int32(f * 100)
+	sr.Similary = int32(resp.Similarity * 100)
 	return sr, nil
 }

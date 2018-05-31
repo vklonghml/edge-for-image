@@ -96,7 +96,7 @@ func (c *IAMClient) GetToken() (string, string, error) {
 	if resp.StatusCode != http.StatusCreated {
 		return "", "", fmt.Errorf("failed to get token, %d", resp.StatusCode)
 	}
-	TOKEN := resp.Header.Get("X-Subject-Token")
+	TOKEN = resp.Header.Get("X-Subject-Token")
 	if TOKEN == "" {
 		return "", "", fmt.Errorf("empty token")
 	}
@@ -112,7 +112,7 @@ func (c *IAMClient) GetToken() (string, string, error) {
 	}
 	tokenMap := body["token"].(map[string]interface{})
 	projectMap := tokenMap["project"].(map[string]interface{})
-	ProjectID := projectMap["id"].(string)
+	ProjectID = projectMap["id"].(string)
 	return TOKEN, ProjectID, nil
 }
 

@@ -8,15 +8,14 @@ import (
 )
 
 const (
-	ErrorResponseBody = "{\"error_code\":\"FRS.0601\",\"error_msg\":\"Can not detect face.\"}"
+	ErrorResponseBody      = "{\"error_code\":\"FRS.0601\",\"error_msg\":\"Can not detect face.\"}"
 	FaceDetectResponseBody = "{\"faces\":[{\"bounding_box\":{\"top_left_x\":200,\"top_left_y\":100,\"width\":120,\"height\":120}}]}"
-
 )
 
-func TestErrorResponseToJson(t *testing.T)  {
+func TestErrorResponseToJson(t *testing.T) {
 	er := ErrorResponse{
-		ErrorCode:"FRS.0601",
-		ErrorMsg:"Can not detect face.",
+		ErrorCode: "FRS.0601",
+		ErrorMsg:  "Can not detect face.",
 	}
 
 	plJson, _ := json.Marshal(er)

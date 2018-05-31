@@ -1,6 +1,6 @@
 pkill edge-for-image
 ./edge-for-image \
---static-dir=/opt/s/images \
+--static-dir=/opt/edgeServer/images \
 --v=2 \
 --alsologtostderr \
 --db-conn-str="root:@tcp(127.0.0.1:3306)/aicloud" \

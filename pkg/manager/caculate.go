@@ -4,14 +4,12 @@ import (
 	"bytes"
 	"edge-for-image/pkg/model"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/golang/glog"
 	"io"
 	"os"
 	"strconv"
-	"strings"
 )
 
 func (m *Manager) CaculateSimilarity(picSample *model.PicSample, imageBase64 string, facesetname string) error {
@@ -44,7 +42,7 @@ func (m *Manager) CaculateSimilarity(picSample *model.PicSample, imageBase64 str
 
 		//这里的sample.Id 就是图片在文件系统中存储的名字，格式为 UUID + 上传的原始图片名.
 		imageaddress := m.CustConfig.StaticDir + "/" + facesetname + "/" + picSample.Id
-		glog.Infof("the imageaddress is %s", imageaddress)
+		glog.Infof("the image file path is %s", imageaddress)
 		fileToSave, err := os.OpenFile(imageaddress, os.O_WRONLY|os.O_CREATE, 0777)
 		if err != nil {
 			glog.Error(err)
@@ -65,34 +63,17 @@ func (m *Manager) CaculateSimilarity(picSample *model.PicSample, imageBase64 str
 			glog.Errorf(err.Error())
 			return err
 		}
-		if strings.Contains(string(resp), "have no face") {
-			glog.Error("image have no face")
-			return nil
-		}
-		data := resp
-		// glog.Infof("resp :%#v", data)
-		bdata := make(map[string]interface{})
-		err = json.Unmarshal(data, &bdata)
-		if err != nil {
-			glog.Errorf(err.Error())
-			return err
-		}
-		faces := bdata["faces"].([]interface{})
 
-		// glog.Infof("resp :%#v", faces)
-		//largeface := make(map[string]interface{})
-		//var largesimilar int64
-		if len(faces) > 0 {
+		if len(resp.Faces) == 0 {
+			glog.Errorf("search image from faceset %s failed.", facesetname)
+			return nil
+		} else if len(resp.Faces) > 0 {
 			// found := false
-			for _, v := range faces {
-				face := v.(map[string]interface{})
-				faceid := face["faceID"].(string)
-				similar, err := strconv.ParseInt(face["similarity"].(string), 10, 32)
-				if err != nil {
-					glog.Errorf("parse error: %s", err.Error())
-				}
+			for _, v := range resp.Faces {
+				faceid := v.FaceId
+				similar := v.Similarity * 100
 				picSample.Similarity[faceid] = int32(similar)
-				glog.Infof("face similarity: %s", face["similarity"])
+				glog.Infof("face similarity: %f", v.Similarity)
 			}
 		}
 	}

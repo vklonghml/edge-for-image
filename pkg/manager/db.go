@@ -15,8 +15,17 @@ func (m *Manager) SaveToRegisterDB(picSample *model.PicSample, facesetName strin
 	}
 
 	glog.Infof("SaveToRegisterDB: picSampleUrl is %s.", picSample.ImageUrl)
-	resp := m.AddFaceToSet(picSample.ImageUrl, facesetName)
-	err := db.InsertIntoFacedb(m.Mydb, facesetName, resp.FaceID, nil, "", resp.FaceID, "", "", picSample.ImageAddress, picSample.ImageUrl, picSample.UploadTime, "", "", "facedb")
+	resp, err := m.AiCloud.AddFace(facesetName, picSample.ImageUrl)
+	if err != nil {
+		glog.Errorf("add face failed. %s", err)
+		return err
+	}
+
+	if len(resp.Faces) == 0 {
+		glog.Errorf("add face failed, return face number is 0.")
+		return err
+	}
+	err = db.InsertIntoFacedb(m.Mydb, facesetName, resp.Faces[0].FaceId, nil, "", resp.Faces[0].FaceId, "", "", picSample.ImageAddress, picSample.ImageUrl, picSample.UploadTime, "", "", "facedb")
 	if err != nil {
 		glog.Errorf("Prepare INSERT faceinfo err: %s", err.Error())
 	}
@@ -39,8 +48,17 @@ func (m *Manager) SaveToUnknowDB(picSample *model.PicSample, facesetName string)
 	}
 
 	glog.Infof("SaveToUnknowDB: picSampleUrl is %s.", picSample.ImageUrl)
-	resp := m.AddFaceToSet(picSample.ImageUrl, facesetName)
-	err := db.InsertIntoFacedb(m.Mydb, facesetName, resp.FaceID, nil, "", resp.FaceID, "", "", picSample.ImageAddress, picSample.ImageUrl, picSample.UploadTime, "", "", "unknowfaceinfo")
+	resp, err := m.AiCloud.AddFace(facesetName, picSample.ImageUrl)
+	if err != nil {
+		glog.Errorf("add face failed. %s", err)
+		return err
+	}
+
+	if len(resp.Faces) == 0 {
+		glog.Errorf("add face failed, return face number is 0.")
+		return err
+	}
+	err = db.InsertIntoFacedb(m.Mydb, facesetName, resp.Faces[0].FaceId, nil, "", resp.Faces[0].FaceId, "", "", picSample.ImageAddress, picSample.ImageUrl, picSample.UploadTime, "", "", "unknowfaceinfo")
 	if err != nil {
 		glog.Errorf("Prepare INSERT unknowfaceinfo err: %s", err.Error())
 	}

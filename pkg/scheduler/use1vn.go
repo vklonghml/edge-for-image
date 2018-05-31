@@ -47,7 +47,7 @@ func (s *Scheduler) cacheScheduler(facesetname string, m *manager.Manager) {
 
 	}
 	//delate all
-	m.DeleteFaceset(getCacheFacesetName(facesetname))
+	m.AiCloud.DeleteFaceset(getCacheFacesetName(facesetname))
 	m.CreateFacesetIfNotExist(getCacheFacesetName(facesetname))
 	//s.deleteCacheFaceSet(tempRegisterCache, facesetname, m)
 

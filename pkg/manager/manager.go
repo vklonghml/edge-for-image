@@ -3,7 +3,6 @@ package manager
 import (
 	"edge-for-image/pkg/db"
 	"edge-for-image/pkg/model"
-	"edge-for-image/pkg/payload"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
@@ -29,24 +28,6 @@ import (
 )
 
 var FACE_SET_CAPACITY int64 = 100000
-
-// var (
-// 	CustConfig *pkg.Config
-// 	AiCloud    *accessai.Accessai
-// 	Mydb       *sql.DB
-// )
-
-// func init() {
-// 	AiCloud = accessai.NewAccessai()
-// 	CustConfig = pkg.InitConfig()
-// }
-
-// Config use for server
-// type Config struct {
-// 	port             string
-// 	staticDir        string
-// 	aiurl            string
-// }
 
 type Manager struct {
 	CustConfig    *pkg.Config
@@ -119,44 +100,17 @@ func (m *Manager) DetectFace(imagebase64 string) ([]byte, error) {
 		glog.Errorf(err.Error())
 		return nil, err
 	}
-	// facedetect := resp
-	fdata := make(map[string]interface{})
-	err = json.Unmarshal(resp, &fdata)
-	if err != nil {
-		glog.Errorf(err.Error())
-		return nil, err
-	}
-	if _, ok := fdata["faceNum"]; !ok {
-		glog.Errorf("detect face return none")
-		return nil, errors.New("detect face return none")
-	}
-	if fdata["faceNum"].(float64) <= 0.0 {
-		return nil, nil
-	}
-	dfaces := fdata["faces"].([]interface{})
-	if len(dfaces) == 0 {
-		glog.Errorf("dfaces len is 0")
+
+	if len(resp.Faces) == 0 {
+		glog.Errorf("detect face number is 0")
 		return nil, errors.New("dfaces len is 0")
 	}
 
-	jdface, err := json.Marshal(dfaces[0])
+	jdface, err := json.Marshal(resp.Faces[0])
 	if err != nil {
 		glog.Errorf("Marshal face err: %s", err)
 		return nil, err
 	}
-
-	// var dface Face
-	// dface.Bound.Height = dfaces[0]["boundingBox"].(map[string]string)["height"]
-	// dface.Bound.Width = dfaces[0]["boundingBox"].(map[string]string)["width"]
-	// dface.Bound.TopLeftX = dfaces[0]["boundingBox"].(map[string]string)["topLeftX"]
-	// dface.Bound.TopLeftY = dfaces[0]["boundingBox"].(map[string]string)["topLeftY"]
-	// dface.Confidence = dfaces[0]["confidence"].(string)
-	// jdface, err := json.Marshal(dface)
-	// if err != nil {
-	// 	glog.Errorf(err.Error())
-	// 	return nil, err
-	// }
-	// glog.Infof("dface: %#v", jdface)
 	return jdface, nil
 }
 
@@ -195,20 +149,6 @@ func (m *Manager) CreateFacesetIfNotExist(facesetname string) error {
 		return err
 	}
 
-	//if exist from ai, then it exist.
-	if strings.Contains(string(resp), "exist") {
-		glog.Infof("the faceset already exist")
-		return nil
-	}
-
-	bdata := make(map[string]interface{})
-	err = json.Unmarshal(resp, &bdata)
-	if err != nil {
-		glog.Errorf("Unmarshal err: %s", err.Error())
-		return err
-	}
-
-	glog.Infof("create faceset data: %#v", bdata)
 	stmt, err := m.Mydb.Prepare("INSERT faceset SET facesetname=?,facesetid=?,createtime=?")
 	if err != nil {
 		glog.Errorf("Prepare INSERT faceinfo err: %s", err.Error())
@@ -216,12 +156,12 @@ func (m *Manager) CreateFacesetIfNotExist(facesetname string) error {
 	}
 	defer stmt.Close()
 	//glog.Infof("config faceset name=%s", facesetname)
-	_, err = stmt.Exec(facesetname, bdata["faceSetID"].(string), time.Now().UnixNano()/1e6)
+	_, err = stmt.Exec(facesetname, resp.FaceSetInfo.FaceSetId, time.Now().UnixNano()/1e6)
 	if err != nil {
 		glog.Errorf("INSERT faceinfo err: %s", err.Error())
 		return err
 	}
-	m.FaceidMap[facesetname] = bdata["faceSetID"].(string)
+	m.FaceidMap[facesetname] = resp.FaceSetInfo.FaceSetId
 
 	direc := m.CustConfig.StaticDir + "/" + facesetname
 	if _, err := os.Stat(direc); os.IsNotExist(err) {
@@ -436,33 +376,16 @@ func (m *Manager) insertIntoKnow(largesimilar, imageaddress, imageurl string, fa
 func (m *Manager) insertIntoFacedb(facesetname, imageaddress, imageurl, name, age, address string, face []byte) {
 	resp, err := m.AiCloud.AddFace(facesetname, imageurl)
 	if err != nil {
-		glog.Errorf("search face err: %s", err.Error())
-	}
-	data := resp
-	// glog.Infof("string:%s, resp :%#v", data, data)
-	if len(resp) == 0 {
-		glog.Errorf("add face return 0 length")
+		glog.Errorf("add face err: %s", err.Error())
 		return
 	}
-	bdata := make(map[string]interface{})
-	json.Unmarshal(data, &bdata)
 
-	// glog.Infof("data: %#v", data)
-	// glog.Infof("bdata: %#v", bdata["face"])
-	// jsonface, err := json.Marshal(bdata["face"])
-	// if err != nil {
-	// 	glog.Errorf("Marshal face err: %s", err)
-	// 	return
-	// }
+	if len(resp.Faces) == 0 {
+		glog.Errorf("add face return 0 faces.")
+		return
+	}
 
-	// jdface, err := json.Marshal(face)
-	// glog.Infof("jdface:%#v", jdface)
-	// if err != nil {
-	// 	glog.Errorf("Marshal face err: %s", err)
-	// 	return
-	// }
-
-	err = db.InsertIntoFacedb(m.Mydb, facesetname, bdata["faceID"].(string), face, "", name, age, address, imageaddress, imageurl, time.Now().UnixNano()/1e6, "", "", "facedb")
+	err = db.InsertIntoFacedb(m.Mydb, facesetname, resp.Faces[0].FaceId, face, "", name, age, address, imageaddress, imageurl, time.Now().UnixNano()/1e6, "", "", "facedb")
 	if err != nil {
 		glog.Errorf("Prepare INSERT faceinfo err: %s", err.Error())
 	}
@@ -672,23 +595,4 @@ func (m *Manager) countFacedb(facesetname string) (int, error) {
 		count = count + 1
 	}
 	return count, nil
-}
-
-func (m *Manager) timeToRemoveImages() {
-
-}
-func (m *Manager) DeleteFaceset(facesetname string) {
-	m.AiCloud.DeleteFaceset(facesetname)
-}
-
-func (m *Manager) FaceVerify(url1 string, url2 string) (resp payload.FaceVerifyResponse) {
-	data, _ := m.AiCloud.FaceCompare(url1, url2)
-	json.Unmarshal(data, &resp)
-	return resp
-}
-
-func (m *Manager) AddFaceToSet(imageUrl string, facesetname string) (resp payload.AddFaceResponse) {
-	data, _ := m.AiCloud.AddFace(facesetname, imageUrl)
-	json.Unmarshal(data, &resp)
-	return resp
 }
