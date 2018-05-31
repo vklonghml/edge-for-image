@@ -20,6 +20,13 @@ type Config struct {
 	RegistCacheSize int
 	DetectCacheSize int
 	AutoRegistSize  int
+	// iam
+	IAMURL      string
+	IAMName     string
+	IAMPassword string
+	IAMProject  string
+	IAMDomain   string
+	IAMRefresh  int
 }
 
 func InitConfig() *Config {
@@ -41,6 +48,13 @@ func InitConfig() *Config {
 	flag.IntVar(&config.RegistCacheSize, "regist-cache-size", 20, "max regist cache size")
 	flag.IntVar(&config.DetectCacheSize, "detect-cache-size", 20, "max detect cache size")
 	flag.IntVar(&config.AutoRegistSize, "auto-regist-size", 100, "auto regist size")
+
+	flag.StringVar(&config.IAMURL, "iam-url", ".", "iam url")
+	flag.StringVar(&config.IAMName, "iam-name", ".", "iam name")
+	flag.StringVar(&config.IAMPassword, "iam-password", ".", "iam password")
+	flag.StringVar(&config.IAMPassword, "iam-project", ".", "iam project")
+	flag.StringVar(&config.IAMDomain, "iam-domain", ".", "iam domain")
+	flag.IntVar(&config.IAMRefresh, "iam-refresh", 3600, "iam refresh interval")
 
 	flag.Parse()
 	return &config

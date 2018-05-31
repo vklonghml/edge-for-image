@@ -15,6 +15,30 @@ import (
 	"time"
 )
 
+func refreshToken(config *pkg.Config, m *manager.Manager) {
+	for i := 0; i < 5; i++ {
+		t, p, err := m.IAMClient.GetToken()
+		if err == nil {
+			glog.Infof("success get token: %s, project: %s", t, p)
+			break
+		}
+		glog.Errorf("error to refresh token with err: %s", err)
+		time.Sleep(5 * time.Second)
+	}
+	for {
+		time.Sleep(time.Duration(config.IAMRefresh) * time.Second)
+		for {
+			t, p, err := m.IAMClient.GetToken()
+			if err == nil {
+				glog.Infof("success get token: %s, project: %s", t, p)
+				break
+			}
+			glog.Errorf("error to refresh token with err: %s", err)
+			time.Sleep(5 * time.Second)
+		}
+	}
+}
+
 func main() {
 	config := pkg.InitConfig()
 	m := NewManager(config)
@@ -32,6 +56,7 @@ func main() {
 	//})
 	//cron.Start()
 	//
+	go refreshToken(config, m)
 	go newLoop(m, s)
 
 	fs := http.FileServer(http.Dir(config.StaticDir))
@@ -67,6 +92,7 @@ func NewManager(config *pkg.Config) *manager.Manager {
 	m := &manager.Manager{
 		CustConfig:    config,
 		AiCloud:       aicloud,
+		IAMClient:     accessai.NewIAMClient(config.IAMURL, config.IAMName, config.IAMPassword, config.IAMProject, config.IAMDomain),
 		Mydb:          checkFacesetExist(config, aicloud, facesetmap),
 		FaceidMap:     facesetmap,
 		RegistCache:   make(map[string][]model.PicSample),

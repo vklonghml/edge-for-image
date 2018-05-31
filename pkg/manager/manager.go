@@ -29,6 +29,7 @@ import (
 )
 
 var FACE_SET_CAPACITY int64 = 100000
+
 // var (
 // 	CustConfig *pkg.Config
 // 	AiCloud    *accessai.Accessai
@@ -51,6 +52,7 @@ type Manager struct {
 	CustConfig    *pkg.Config
 	AiCloud       *accessai.Accessai
 	Mydb          *sql.DB
+	IAMClient     *accessai.IAMClient
 	FaceidMap     map[string]string
 	UploadPortal  map[string]model.Caches //to delete
 	DetectCache   map[string][]model.PicSample
@@ -153,7 +155,7 @@ func (m *Manager) DetectFace(imagebase64 string) ([]byte, error) {
 	// if err != nil {
 	// 	glog.Errorf(err.Error())
 	// 	return nil, err
-	// } 
+	// }
 	// glog.Infof("dface: %#v", jdface)
 	return jdface, nil
 }
