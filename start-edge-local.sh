@@ -21,4 +21,8 @@ pkill edge-for-image
 --iam-project=cn-north-1 \
 --iam-domain=QiFei \
 --iam-refresh=3600 \
+--obs-endpoint=https://obs.cn-north-1.myhwclouds.com \
+--obs-bucket-name=facedetect \
+--ak=${AK} \
+--sk=${SK} \
 --aiurl=https://frs.cn-north-1.myhuaweicloud.com/v1/ >> edge-for-image.log 2>&1 &

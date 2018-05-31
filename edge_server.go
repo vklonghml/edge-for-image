@@ -13,6 +13,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"time"
+	"edge-for-image/pkg/obs"
 )
 
 func refreshToken(config *pkg.Config, m *manager.Manager) {
@@ -80,6 +81,19 @@ func main() {
 
 }
 
+var obsClient *obs.ObsClient
+
+func getObsClient() *obs.ObsClient {
+	var err error
+	if obsClient == nil {
+		obsClient, err = obs.New(pkg.Config0.AK, pkg.Config0.SK, pkg.Config0.OBSEndpoint)
+		if err != nil {
+			panic(err)
+		}
+	}
+	return obsClient
+}
+
 func NewManager(config *pkg.Config) *manager.Manager {
 
 	// if _, err := db.Exec("create database if not exists aicloud"); err != nil {
@@ -92,6 +106,7 @@ func NewManager(config *pkg.Config) *manager.Manager {
 	m := &manager.Manager{
 		CustConfig:    config,
 		AiCloud:       aicloud,
+		ObsClient:     getObsClient(),
 		IAMClient:     accessai.NewIAMClient(config.IAMURL, config.IAMName, config.IAMPassword, config.IAMProject, config.IAMDomain),
 		Mydb:          checkFacesetExist(config, aicloud, facesetmap),
 		FaceidMap:     facesetmap,
@@ -140,56 +155,7 @@ func checkFacesetExist(config *pkg.Config, aicloud *accessai.Accessai, facesetma
 		// facesets = append(facesets, face)
 		facesetmap[face.FaceSetName] = face.FaceSetID
 	}
-	//if _, ok := facesetmap[config.FaceSetName]; !ok {
-	//	urlStr := config.Aiurl + "/v1/faceSet"
-	//	body := []byte(fmt.Sprintf("{\"faceSetName\":\"%s\"}", config.FaceSetName))
-	//	// resp, err := aicloud.FakeCreateFaceset(urlStr, http.MethodPost, body)
-	//	resp, err := aicloud.CreateFaceset(urlStr, http.MethodPost, body)
-	//	if err != nil {
-	//		glog.Errorf("create faceset err: %s", err.Error())
-	//	}
-	//
-	//	// data, err := ioutil.ReadAll(resp.Body)
-	//	// if err != nil {
-	//	// 	db.Close()
-	//	// 	glog.Error(err)
-	//	// 	os.Exit(1)
-	//	// }
-	//
-	//	// glog.Infof("create faceset resp: %#v", resp)
-	//	// data := resp
-	//	bdata := make(map[string]interface{})
-	//	err = json.Unmarshal(resp, &bdata)
-	//	if err != nil {
-	//		glog.Errorf("Unmarshal err: %s", err.Error())
-	//	}
-	//
-	//	glog.Infof("create faceset data: %#v", bdata)
-	//	stmt, err := db.Prepare("INSERT faceset SET facesetname=?,facesetid=?,createtime=?")
-	//	if err != nil {
-	//		glog.Errorf("Prepare INSERT faceinfo err: %s", err.Error())
-	//		db.Close()
-	//		glog.Errorf("scan db err: %s", err.Error())
-	//		os.Exit(1)
-	//	}
-	//	defer stmt.Close()
-	//	glog.Infof("config faceset name=%s", config.FaceSetName)
-	//	_, err = stmt.Exec(config.FaceSetName, bdata["faceSetID"].(string), time.Now().UnixNano()/1e6)
-	//	if err != nil {
-	//		glog.Errorf("INSERT faceinfo err: %s", err.Error())
-	//		os.Exit(1)
-	//	}
-	//	facesetmap[config.FaceSetName] = bdata["faceSetID"].(string)
-	//}
-	//
-	//direc := config.StaticDir + "/" + config.FaceSetName
-	//if _, err := os.Stat(direc); os.IsNotExist(err) {
-	//	err = os.Mkdir(direc, 0777)
-	//	if err != nil {
-	//		glog.Errorf("mkdir dir err: %s", err.Error())
-	//		os.Exit(1)
-	//	}
-	//}
+
 	glog.Infof("faceset map: %#v", facesetmap)
 
 	return db

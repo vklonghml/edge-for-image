@@ -27,6 +27,11 @@ type Config struct {
 	IAMProject  string
 	IAMDomain   string
 	IAMRefresh  int
+	// obs
+	OBSEndpoint   string
+	OBSBucketName string
+	AK            string
+	SK            string
 }
 
 var Config0 = Config{}
@@ -56,6 +61,11 @@ func InitConfig() *Config {
 	flag.StringVar(&Config0.IAMProject, "iam-project", ".", "iam project")
 	flag.StringVar(&Config0.IAMDomain, "iam-domain", ".", "iam domain")
 	flag.IntVar(&Config0.IAMRefresh, "iam-refresh", 3600, "iam refresh interval")
+
+	flag.StringVar(&Config0.OBSEndpoint, "obs-endpoint", ".", "obs endpoint")
+	flag.StringVar(&Config0.OBSBucketName, "obs-bucket-name", ".", "obs bucket name")
+	flag.StringVar(&Config0.AK, "ak", ".", "ak")
+	flag.StringVar(&Config0.SK, "sk", ".", "sk")
 
 	flag.Parse()
 	return &Config0

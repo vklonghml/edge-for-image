@@ -25,6 +25,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang/glog"
 	"github.com/satori/go.uuid"
+	"edge-for-image/pkg/obs"
 )
 
 var FACE_SET_CAPACITY int64 = 100000
@@ -32,6 +33,7 @@ var FACE_SET_CAPACITY int64 = 100000
 type Manager struct {
 	CustConfig    *pkg.Config
 	AiCloud       *accessai.Accessai
+	ObsClient     *obs.ObsClient
 	Mydb          *sql.DB
 	IAMClient     *accessai.IAMClient
 	FaceidMap     map[string]string
@@ -114,26 +116,6 @@ func (m *Manager) DetectFace(imagebase64 string) ([]byte, error) {
 	return jdface, nil
 }
 
-//func (m *Manager) saveImageToFile(imagename string, imageDecode []byte) error {
-//	buf := bytes.NewBuffer(nil)
-//	imageReader := bytes.NewReader(imageDecode)
-//	if _, err := io.Copy(buf, imageReader); err != nil {
-//		glog.Errorf("file copy to buf err: %s", err.Error())
-//	}
-//
-//	imageaddress := m.CustConfig.StaticDir + "/" + m.CustConfig.FaceSetName + "/" + imagename
-//	fileToSave, err := os.OpenFile(imageaddress, os.O_WRONLY|os.O_CREATE, 0777)
-//	if err != nil {
-//		glog.Error(err)
-//		return err
-//	}
-//	defer fileToSave.Close()
-//	if _, err := io.Copy(fileToSave, buf); err != nil {
-//		glog.Errorf("buf copy to file err: %s", err.Error())
-//	}
-//	return nil
-//}
-
 func (m *Manager) CreateFacesetIfNotExist(facesetname string) error {
 	// rows, err := db.Query("select * from faceset where facesetname = ?", config.FaceSetName)
 	for key := range m.FaceidMap {
@@ -187,22 +169,19 @@ func (m *Manager) searchFace(imageBase64, imagename, facesetname string) error {
 		m.DetectThread[facesetname] = 1
 	}
 
-	// imageBase64 := base64.StdEncoding.EncodeToString(buf.Bytes())
-	// imageBase64 = ""
-	// glog.Infof("image base64: %s", imageBase64)
-
-	// defer upFile.Close()
 	uid, err := uuid.NewV4()
 	if err != nil {
 		glog.Errorf("uuid generate error: %s", err.Error())
 	}
 	imagename = fmt.Sprintf("%s", uid) + "-" + imagename
 	glog.Infof("the imagename is %s", imagename)
-	//filexist := m.listAlllfiles(facesetname, imagename)
-	//if filexist {
-	//	glog.Error("file name already exist")
-	//	return errors.New("file name already exist")
-	//}
+
+	inputKey := facesetname + "/" + imagename
+	err = m.UploadImageToObs(inputKey, imageBase64)
+	if err != nil {
+		glog.Errorf("Upload Image %s to OBS failed!", inputKey)
+		return err
+	}
 
 	//构造PicSample对象
 	picSample := &model.PicSample{
@@ -211,10 +190,11 @@ func (m *Manager) searchFace(imageBase64, imagename, facesetname string) error {
 		Similarity:  make(map[string]int32),
 		MostSimilar: 0,
 		ImageBase64: imageBase64,
+		ImageUrl:    inputKey,
 	}
 
 	//调用人脸比对API计算相似度
-	m.CaculateSimilarity(picSample, imageBase64, facesetname)
+	m.CaculateSimilarity(picSample, facesetname)
 	m.CaculateMostSimilarity(picSample)
 
 	if picSample.MostSimilar > int32(m.CustConfig.Similarity) {
@@ -222,113 +202,10 @@ func (m *Manager) searchFace(imageBase64, imagename, facesetname string) error {
 	} else {
 		m.RegistCache[facesetname] = append(m.RegistCache[facesetname], *picSample)
 	}
-
-	/** 之前的方法，先留在这做参考，后面可以删除掉这段代码
-
-
-
-
-	// search face in faceset
-	// /v1/faceSet/13345/faceSearch?url=http://100.114.203.102/data/2_8.png
-	if jdface != nil {
-		// save to file
-		imageaddress := m.CustConfig.StaticDir + "/" + m.CustConfig.FaceSetName + "/" + imagename
-		fileToSave, err := os.OpenFile(imageaddress, os.O_WRONLY|os.O_CREATE, 0777)
-		if err != nil {
-			glog.Error(err)
-			return err
-		}
-		defer fileToSave.Close()
-		if _, err := io.Copy(fileToSave, buf); err != nil {
-			glog.Errorf("buf copy to file err: %s", err.Error())
-		}
-
-		imageurl := "http://" + m.CustConfig.PublicHost + ":" + m.CustConfig.Port + "/" + m.CustConfig.FaceSetName + "/" + imagename
-
-		urlStr := m.CustConfig.Aiurl + "/v1/faceSet/" + m.FaceidMap[m.CustConfig.FaceSetName] + "/faceSearch?url=" + imageurl
-		// body := []byte(fmt.Sprintf("{\"imageUrl\": \"%s\"}", imageurl))
-		// resp, err := m.AiCloud.FakeFaceSearch(urlStr, http.MethodPost, body)
-		resp, err := m.AiCloud.FaceSearch(urlStr, http.MethodGet, nil)
-		if err != nil {
-			glog.Errorf(err.Error())
-			return err
-		}
-		if strings.Contains(string(resp), "have no face") {
-			glog.Error("image have no face")
-			return nil
-		}
-		data := resp
-		// glog.Infof("resp :%#v", data)
-		bdata := make(map[string]interface{})
-		err = json.Unmarshal(data, &bdata)
-		if err != nil {
-			glog.Errorf(err.Error())
-			return err
-		}
-		faces := bdata["faces"].([]interface{})
-
-		// glog.Infof("resp :%#v", faces)
-		largeface := make(map[string]interface{})
-		var largesimilar int64
-		if len(faces) > 0 {
-			// found := false
-			for _, v := range faces {
-				face := v.(map[string]interface{})
-				similar, err := strconv.ParseInt(face["similarity"].(string), 10, 32)
-				if err != nil {
-					glog.Errorf("parse error: %s", err.Error())
-				}
-				if similar >= largesimilar {
-					// success
-					largesimilar = similar
-					largeface = face
-				}
-				glog.Infof("face similarity: %s", face["similarity"])
-			}
-			// if !found {
-			// 	// todo
-			// 	glog.Infof("all similarities are two small")
-			// 	// m.insertIntoFacedb(imageaddress, "http://"+m.CustConfig.Host + ":" + m.CustConfig.Port+"/"+handler.Filename, "", "", "")
-			// 	// insert unknowfaceinfo
-			// 	err = pkg.InsertIntoFacedb(m.Mydb, m.CustConfig.FaceSetName, "", jdface, "", "", "", "", imageaddress, imageurl, time.Now().UnixNano()/1e6, "unknowfaceinfo")
-			// 	if err != nil {
-			// 		glog.Errorf("INSERT unknowfaceinfo err: %s", err)
-			// 		return err
-			// 	}
-			// }
-		}
-		if largesimilar >= m.CustConfig.Similarity {
-			return m.insertIntoKnow(strconv.FormatInt(largesimilar, 10), imageaddress, imageurl, largeface)
-		}
-
-		glog.Infof("no image are match in search")
-		// m.insertIntoFacedb(imageaddress, "http://"+m.CustConfig.Host + ":" + m.CustConfig.Port+"/"+handler.Filename, "", "", "")
-		err = pkg.InsertIntoFacedb(m.Mydb, m.CustConfig.FaceSetName, "", jdface, "", "", "", "", imageaddress, imageurl, time.Now().UnixNano()/1e6, "", "", "unknowfaceinfo")
-		if err != nil {
-			glog.Errorf("INSERT unknowfaceinfo err: %s", err)
-			return err
-		}
-	} else {
-		glog.Warning("image detect no face")
-		return nil
-	}
-	**/
 	return nil
-	// glog.Infof("resp :%s", data)
 }
 
 func (m *Manager) insertIntoKnow(largesimilar, imageaddress, imageurl string, faceid string, facesetname string) error {
-	// re := regexp.M
-	//faceidToS := face["faceID"].(string)
-	//index := 0
-	//for k := range faceidToS {
-	//	if string(faceidToS[k]) != "0" {
-	//		index = k
-	//		break
-	//	}
-	//}
-	//glog.Infof("index: %d, face:%s", index, faceidToS[index:len(faceidToS)])
-	// rows, err := m.Mydb.Query(fmt.Sprintf("select * from facedb where faceid regexp '%s$'", face["faceID"]))
 	rows, err := m.Mydb.Query("select * from facedb where faceid = ?", faceid)
 	if err != nil {
 		glog.Errorf("Query db err: %s", err.Error())

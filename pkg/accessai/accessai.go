@@ -11,6 +11,7 @@ import (
 	http_utils "edge-for-image/pkg/http"
 
 	"github.com/golang/glog"
+	"edge-for-image/pkg"
 )
 
 // Accessai define client to ad
@@ -29,7 +30,7 @@ func NewAccessai() *Accessai {
 func (ai *Accessai) FaceDetect(imageUrl string) (*FaceDetectResponse, error) {
 	glog.Infof("FaceDetect: image url is: %s", imageUrl)
 	req := &FaceDetectRequest{
-		ImageUrl: imageUrl,
+		ImageUrl: "/" + pkg.Config0.OBSBucketName + "/" + imageUrl,
 	}
 	body, _ := json.Marshal(req)
 	resp, err := access(getFaceDetectUrl(), nil, body, len(body), http.MethodPost, ai.HTTPClient)
@@ -101,7 +102,7 @@ func (ai *Accessai) FaceCompareBase64(image1Base64, image2Base64 string) (*FaceC
 func (ai *Accessai) AddFace(faceSetName, imageUrl string) (*AddFaceResponse, error) {
 	glog.Infof("AddFace: faceSetName is: %s, imageUrl is %s", faceSetName, imageUrl)
 	req := &AddFaceRequest{
-		ImageUrl: imageUrl,
+		ImageUrl: "/" + pkg.Config0.OBSBucketName + "/" + imageUrl,
 	}
 	body, _ := json.Marshal(req)
 	resp, err := access(getAddFaceUrl(faceSetName), nil, body, len(body), http.MethodPost, ai.HTTPClient)
@@ -211,7 +212,7 @@ func (ai *Accessai) DeleteFaceset(faceSetName string) (*DeleteFacesetResponse, e
 func (ai *Accessai) FaceSearch(faceSetName, imageUrl string) (*FaceSearchResponse, error) {
 	glog.Infof("FaceSearch: faceSetName is: %s, imageUrl is: %s", faceSetName, imageUrl)
 	req := &FaceSearchRequest{
-		ImageUrl: imageUrl,
+		ImageUrl: "/" + pkg.Config0.OBSBucketName + "/" + imageUrl,
 	}
 	body, _ := json.Marshal(req)
 	resp, err := access(getFaceSearchUrl(faceSetName), nil, body, len(body), http.MethodPost, ai.HTTPClient)
@@ -244,13 +245,13 @@ func (ai *Accessai) FaceSearchBase64(faceSetName, imageBase64 string) (*FaceSear
 }
 
 func access(URL string, headers map[string]string, content []byte, contentLength int, httpMethod string, httpclient *http.Client) ([]byte, error) {
-	var body string
-	if len(string(content)) >= 100 {
-		body = string(content)[0:100]
-	} else {
-		body = string(content)
-	}
-	glog.Infof("url is %v, body is %v.", URL, body)
+	//var body string
+	//if len(string(content)) >= 100 {
+	//	body = string(content)[0:100]
+	//} else {
+	//	body = string(content)
+	//}
+	//glog.Infof("url is %v, body is %v.", URL, body)
 	var reqBody io.Reader
 	var req *http.Request
 	var err error

@@ -96,7 +96,7 @@ func (s *Scheduler) cacheScheduler(facesetname string, m *manager.Manager) {
 
 //计算当前图片与缓存集的相似度，注意该图片也在缓存集中，计算时需要过滤掉自己与自己的相似度
 func (s *Scheduler) caculateSimilarityWithCache(picSample *model.PicSample, cacheList []model.PicSample, imageBase64 string, facesetName string, m *manager.Manager) model.SRList {
-	m.CaculateSimilarity(picSample, imageBase64, facesetName)
+	m.CaculateSimilarity(picSample, facesetName)
 	result := model.SRList{}
 
 	for k, v := range picSample.Similarity {
