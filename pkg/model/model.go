@@ -6,10 +6,8 @@ type PicSample struct {
 	Similarity    map[string]int32
 	MostSimilar   int32
 	MostSimilarId string
-	ImageBase64   string
 	ImageUrl      string
 	ImageAddress  string
-	Face          []byte
 }
 
 type SimilaryRelation struct {

@@ -189,7 +189,6 @@ func (m *Manager) searchFace(imageBase64, imagename, facesetname string) error {
 		UploadTime:  time.Now().UnixNano() / 1e6,
 		Similarity:  make(map[string]int32),
 		MostSimilar: 0,
-		ImageBase64: imageBase64,
 		ImageUrl:    inputKey,
 	}
 

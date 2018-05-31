@@ -3,10 +3,6 @@ package scheduler
 import (
 	"edge-for-image/pkg/manager"
 	"edge-for-image/pkg/model"
-	"encoding/base64"
-	"github.com/golang/glog"
-	"os"
-	"strings"
 )
 
 type Scheduler struct {
@@ -129,81 +125,4 @@ func (m *Scheduler) caculateMostSimilarity(matrix *model.SRMatrix) model.SRList 
 		}
 	}
 	return result
-}
-
-//将缓存的图片集放到云上
-func (s *Scheduler) addCacheFaceSet(cacheList []model.PicSample, facesetName string, m *manager.Manager) error {
-	m.CreateFacesetIfNotExist(facesetName + model.CACHE_SUFFIX)
-	if len(cacheList) > 0 {
-		glog.Infof("cacheFaceSet size is %d", len(cacheList))
-		for _, picSample := range cacheList {
-			// first detect image face
-			//picSample, ok := pic.Value.(model.PicSample)
-			//if !ok {
-			//	glog.Errorf("element in list is not PicSample: ", pic.Value)
-			//	return nil
-			//}
-
-			imagedecode, err := base64.StdEncoding.DecodeString(picSample.ImageBase64)
-			if err != nil {
-				glog.Error(err)
-				return err
-			}
-			jdface, err := m.DetectFace(picSample.ImageBase64)
-			if err != nil {
-				glog.Error(err)
-				return err
-			}
-			glog.Infof("dface: %#v", jdface)
-
-			// save to file
-			if jdface != nil {
-				imageaddress := m.CustConfig.StaticDir + "/" + facesetName + "/" + picSample.Id
-				fileToSave, err := os.OpenFile(imageaddress, os.O_WRONLY|os.O_CREATE, 0777)
-				if err != nil {
-					glog.Error(err)
-					return err
-				}
-				defer fileToSave.Close()
-				if _, err := fileToSave.Write(imagedecode); err != nil {
-					glog.Errorf("buf copy to file err: %s", err.Error())
-					return err
-				}
-
-				imageurl := "http://" + m.CustConfig.PublicHost + ":" + m.CustConfig.Port + "/" + facesetName + "/" + picSample.Id
-				_, err = m.AiCloud.AddFace(facesetName, imageurl)
-				if err != nil {
-					glog.Errorf("add to faceset err: %s", err.Error())
-				}
-
-			} else {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-//从云上删除缓存的图像集
-func (s *Scheduler) deleteCacheFaceSet(cacheList []model.PicSample, facesetName string, m *manager.Manager) error {
-	if len(cacheList) > 0 {
-		for _, picSample := range cacheList {
-			// delete from faceset
-			_, err := m.AiCloud.DeleteFace(facesetName, picSample.Id)
-			if err != nil {
-				glog.Error(err)
-				return err
-			}
-
-			//delete from os
-			imageurl := "http://" + m.CustConfig.PublicHost + ":" + m.CustConfig.Port + "/" + facesetName + "/" + picSample.Id
-			glog.Infof("image location:%s", strings.Split(imageurl, ":"+m.CustConfig.Port)[1])
-			imageaddress := m.CustConfig.StaticDir + strings.Split(imageurl, ":"+m.CustConfig.Port)[1]
-			e := os.Remove(imageaddress)
-			if e != nil {
-				glog.Error("remove err:%s", e)
-			}
-		}
-	}
-	return nil
 }
