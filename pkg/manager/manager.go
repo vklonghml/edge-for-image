@@ -323,6 +323,8 @@ func (m *Manager) GetAllfaces(facesetname, table string, start, end, numbers int
 				}
 			}
 		}
+		knowface.ImageURL = fmt.Sprintf("https://%s.obs.cn-north-1.myhwclouds.com/%s", pkg.Config0.OBSBucketName, knowface.ImageURL)
+		knowface.SimilaryImageURL = fmt.Sprintf("https://%s.obs.cn-north-1.myhwclouds.com/%s", pkg.Config0.OBSBucketName, knowface.SimilaryImageURL)
 		knowsfaces = append(knowsfaces, knowface)
 		num++
 	}

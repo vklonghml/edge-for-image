@@ -65,8 +65,8 @@ func (ai *Accessai) FaceDetectBase64(imageBase64 string) (*FaceDetectResponse, e
 func (ai *Accessai) FaceCompare(image1Url, image2Url string) (*FaceCompareResponse, error) {
 	glog.Infof("FaceCompare: image1 is: %s, image2 is %s.", image1Url, image2Url)
 	req := &FaceCompareRequest{
-		Image1Url: image1Url,
-		Image2Url: image2Url,
+		Image1Url: "/" + pkg.Config0.OBSBucketName + "/" + image1Url,
+		Image2Url: "/" + pkg.Config0.OBSBucketName + "/" + image2Url,
 	}
 	body, _ := json.Marshal(req)
 	resp, err := access(getFaceCompareUrl(), nil, body, len(body), http.MethodPost, ai.HTTPClient)

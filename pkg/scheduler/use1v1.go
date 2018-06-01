@@ -230,6 +230,9 @@ func caculateSimilarityWithOther(pic1 *model.PicSample, pic2 *model.PicSample, m
 	}
 
 	resp, err := m.AiCloud.FaceCompare(pic1.ImageUrl, pic2.ImageUrl)
+	if err != nil {
+		return sr, nil
+	}
 	sr.From = pic1
 	sr.To = pic2
 	sr.Similary = int32(resp.Similarity * 100)
