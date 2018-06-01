@@ -197,10 +197,12 @@ func (m *Manager) searchFace(imageBase64, imagename, facesetname string) error {
 	m.CaculateMostSimilarity(picSample)
 
 	if picSample.MostSimilar > int32(m.CustConfig.Similarity) {
-		m.DetectCache[facesetname] = append(m.DetectCache[facesetname], *picSample)
+		//m.DetectCache[facesetname] = append(m.DetectCache[facesetname], *picSample)
+		m.SaveToDetectDB(picSample, facesetname)
 	} else {
-		m.RegistCache[facesetname] = append(m.RegistCache[facesetname], *picSample)
+		//m.RegistCache[facesetname] = append(m.RegistCache[facesetname], *picSample)
 	}
+	glog.Infof("====================================================== end here   ====================")
 	return nil
 }
 
@@ -226,7 +228,7 @@ func (m *Manager) insertIntoKnow(largesimilar, imageaddress, imageurl string, fa
 	}
 	if len(knowsfaces) == 1 {
 		// insert know face
-		glog.Infof("byte:%#v", faceinteface)
+		//glog.Infof("byte:%#v", faceinteface)
 		// jsonface, err := json.Marshal(faceinteface)
 		// if err != nil {
 		// 	glog.Errorf("Marshal face err: %s", err.Error())

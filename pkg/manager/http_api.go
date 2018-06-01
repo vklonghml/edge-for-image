@@ -2,14 +2,11 @@ package manager
 
 import (
 	"edge-for-image/pkg/payload"
-	"encoding/base64"
 	"encoding/json"
 	"github.com/satori/go.uuid"
 	"io"
 	"io/ioutil"
 	"net/url"
-	"os"
-
 	// "path/filepath"
 	// "flag"
 	"fmt"
@@ -46,11 +43,12 @@ func (m *Manager) Faceset(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = m.CreateFacesetIfNotExist(py.Faceset.Name);
+		glog.Infof("request is %v", py)
+		err = m.CreateFacesetIfNotExist(py.Name);
 		if err != nil {
 			glog.Error(err)
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(fmt.Sprintf("create faceset %s error!", py.Faceset.Name)))
+			w.Write([]byte(fmt.Sprintf("create faceset %s error!", py.Name)))
 			return
 		}
 
@@ -84,6 +82,7 @@ func (m *Manager) Upload(w http.ResponseWriter, r *http.Request) {
 		// 	w.Write([]byte(fmt.Sprintf("500 %s", err)))
 		// 	return
 		// }
+		glog.Infof("====================================================== start here ====================")
 
 		data, err := ioutil.ReadAll(r.Body)
 		if err != nil {
@@ -106,6 +105,9 @@ func (m *Manager) Upload(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(fmt.Sprintf("500 %s", err)))
 		}
+
+		glog.Infof("image upload time: %s", getTimeStamp(filename))
+
 		imagebody, ok := bdata["imageBase64"].(string)
 		if !ok {
 			glog.Error(err)
@@ -128,6 +130,18 @@ func (m *Manager) Upload(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		// fmt.Fprintf(w, "%v", handler.Header)
 	}
+}
+func getTimeStamp(filename string) (tm string) {
+	if len(filename) != 17 {
+		return ""
+	}
+
+	i, err := strconv.ParseInt(filename[0:12], 10, 64)
+	if err != nil {
+		return ""
+	}
+	tm1 := time.Unix(i/1000, (i%1000)*1000)
+	return tm1.Format("2006-01-02 15:04:05.000")
 }
 
 func (m *Manager) Batchdeletefaces(w http.ResponseWriter, r *http.Request) {
@@ -190,25 +204,6 @@ func (m *Manager) AddFace(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// r.ParseMultipartForm(32 << 20)
-		// file, handler, err := r.FormFile("uploadfile")
-		// if err != nil {
-		// 	glog.Error(err)
-		// 	w.WriteHeader(http.StatusInternalServerError)
-		// 	w.Write([]byte(fmt.Sprintf("500 uploadfile not found")))
-		// 	return
-		// }
-		// defer file.Close()
-
-		// buf := bytes.NewBuffer(nil)
-		// if _, err := io.Copy(buf, file); err != nil {
-		// 	glog.Error(err)
-		// 	w.WriteHeader(http.StatusInternalServerError)
-		// 	w.Write([]byte(fmt.Sprintf("500 io copy failed")))
-		// 	return
-		// }
-
-		// defer upFile.Close()
 		uid, err := uuid.NewV4()
 		if err != nil {
 			glog.Errorf("uuid generate error: %s", err.Error())
@@ -217,71 +212,20 @@ func (m *Manager) AddFace(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		imagename := fmt.Sprintf("%s", uid) + "-" + bdata["imagename"].(string)
-		//filexist := m.listAlllfiles(bdata["facesetname"].(string), imagename)
-		//if filexist {
-		//	w.WriteHeader(http.StatusInternalServerError)
-		//	w.Write([]byte(fmt.Sprintf("500 %s", "file name already exist")))
-		//	return
-		//}
+		glog.Infof("regist imagename is %s", imagename)
 
-		// first detect image face
-		imagedecode, err := base64.StdEncoding.DecodeString(bdata["imagebase64"].(string))
+		inputKey := bdata["facesetname"].(string) + "/" + imagename
+		err = m.UploadImageToObs(inputKey, bdata["imagebase64"].(string))
 		if err != nil {
+			glog.Errorf("Upload Image %s to OBS failed!", inputKey)
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(fmt.Sprintf("500 decode image err")))
+			w.Write([]byte(fmt.Sprintf("500 upload obs err")))
 			return
 		}
-		jdface, err := m.DetectFace(bdata["imagebase64"].(string))
-		if err != nil {
-			glog.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(fmt.Sprintf("500 cannot detect face")))
-			return
-		}
-		glog.Infof("dface: %#v", jdface)
 
-		// save to file
-		if jdface != nil {
-			imageaddress := m.CustConfig.StaticDir + "/" + bdata["facesetname"].(string) + "/" + imagename
-			fileToSave, err := os.OpenFile(imageaddress, os.O_WRONLY|os.O_CREATE, 0777)
-			if err != nil {
-				glog.Error(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(fmt.Sprintf("500 can not create file")))
-				return
-			}
-			defer fileToSave.Close()
-			if _, err := fileToSave.Write(imagedecode); err != nil {
-				glog.Errorf("buf copy to file err: %s", err.Error())
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(fmt.Sprintf("500 can not create file")))
-				return
-			}
-
-			imageurl := "http://" + m.CustConfig.PublicHost + ":" + m.CustConfig.Port + "/" + bdata["facesetname"].(string) + "/" + imagename
-			m.insertIntoFacedb(bdata["facesetname"].(string), imageaddress, imageurl, bdata["name"].(string), bdata["age"].(string), bdata["address"].(string), jdface)
-			// body := []byte(fmt.Sprintf("{\"imageUrl\": \"%s\"}", imageurl))
-			// resp, err := m.AiCloud.FakeFaceSearch(urlStr, http.MethodPost, body)
-			// resp, err := m.AiCloud.FaceSearch(urlStr, http.MethodGet, nil)
-			// if err != nil {
-			// 	glog.Errorf(err.Error())
-			// 	return err
-			// }
-		} else {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(fmt.Sprintf("500 the face")))
-			return
-		}
+		m.insertIntoFacedb(bdata["facesetname"].(string), inputKey, inputKey, bdata["name"].(string), bdata["age"].(string), bdata["address"].(string), nil)
 		w.WriteHeader(http.StatusOK)
 
-		// fmt.Fprintf(w, "%v", handler.Header)
-		// f, err := os.OpenFile("./test/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)  // 此处假设当前目录下已存在test目录
-		// if err != nil {
-		// 	fmt.Println(err)
-		// 	return
-		// }
-		// defer f.Close()
-		// io.Copy(f, file)
 	}
 }
 

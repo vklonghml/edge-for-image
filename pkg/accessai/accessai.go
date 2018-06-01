@@ -213,6 +213,7 @@ func (ai *Accessai) FaceSearch(faceSetName, imageUrl string) (*FaceSearchRespons
 	glog.Infof("FaceSearch: faceSetName is: %s, imageUrl is: %s", faceSetName, imageUrl)
 	req := &FaceSearchRequest{
 		ImageUrl: "/" + pkg.Config0.OBSBucketName + "/" + imageUrl,
+		TopN:     1,
 	}
 	body, _ := json.Marshal(req)
 	resp, err := access(getFaceSearchUrl(faceSetName), nil, body, len(body), http.MethodPost, ai.HTTPClient)

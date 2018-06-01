@@ -22,8 +22,8 @@ func (m *Manager) CaculateSimilarity(picSample *model.PicSample, facesetname str
 		faceid := v.FaceId
 		similar := v.Similarity * 100
 		picSample.Similarity[faceid] = int32(similar)
-		glog.Infof("face similarity: %f", v.Similarity)
 	}
+	//glog.Infof("After CaculateSimilarity: %#v", picSample)
 
 	return nil
 }
@@ -41,7 +41,7 @@ func (m *Manager) CaculateMostSimilarity(sample *model.PicSample) {
 		}
 		sample.MostSimilar = curMostSimilarityValue
 		sample.MostSimilarId = fmt.Sprintf("%s", curMostSimilarityKey)
-		glog.Infof("CaculateMostSimilarity: faceid is %s.", sample.MostSimilarId)
-		//glog.Infof("picSample is %#v", sample)
+		//glog.Infof("CaculateMostSimilarity: faceid is %s.", sample.MostSimilarId)
+		glog.Infof("After CaculateMostSimilarity: %#v", sample)
 	}
 }

@@ -110,6 +110,7 @@ type DeleteFacesetResponse struct {
 
 type FaceSearchRequest struct {
 	ImageUrl string `json:"image_url"`
+	TopN     int32  `json:"top_n"`
 }
 
 type FaceSearchBase64Request struct {

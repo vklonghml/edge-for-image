@@ -1,9 +1,9 @@
 package payload
 
-type FacesetRequest struct {
-	Faceset Faceset `json:"faceset"`
-}
+//type FacesetRequest struct {
+//	Faceset Faceset `json:"faceset"`
+//}
 
-type Faceset struct {
+type FacesetRequest struct {
 	Name string `json:"name"`
 }
