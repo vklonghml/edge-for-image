@@ -13,7 +13,6 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "net/http/pprof"
-	_ "github.com/rakyll/gom/http"
 	"time"
 	"edge-for-image/pkg/obs"
 )

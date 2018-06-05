@@ -14,12 +14,6 @@
   revision = "23def4e6c14b4da8ac2ed8007337bc5eb5007998"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/rakyll/gom"
-  packages = ["http"]
-  revision = "183a9e70f4777aa03d377d21a0ed023a6afac141"
-
-[[projects]]
   name = "github.com/satori/go.uuid"
   packages = ["."]
   revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
@@ -34,6 +28,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "5355386ea7bb15aaa11612d7c9defc4948b8354a46aaadc2ac71703a7ddc22aa"
+  inputs-digest = "779b4dd42818b7de2e448aad8f7b444e7b286114f28159c3ff8fb34d33843d8b"
   solver-name = "gps-cdcl"
   solver-version = 1
