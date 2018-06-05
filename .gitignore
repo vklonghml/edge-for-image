@@ -1,2 +1,3 @@
-/vendor/**/.git
+vendor/*
 edge-for-image
+.DS_Store
